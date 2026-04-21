@@ -12,6 +12,7 @@ import FileDetail from "@/pages/FileDetail";
 import ReviewGovernance from "@/pages/ReviewGovernance";
 import AuthoringMode from "@/pages/AuthoringMode";
 import Operations from "@/pages/Operations";
+import CodeGate from "@/components/auth/CodeGate";
 import "./App.css";
 
 const queryClient = new QueryClient({
@@ -28,6 +29,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <CodeGate>
         <BrandProvider>
           <ToastProvider>
           <BrowserRouter>
@@ -48,6 +50,7 @@ export default function App() {
           </BrowserRouter>
           </ToastProvider>
         </BrandProvider>
+        </CodeGate>
       </AuthProvider>
     </QueryClientProvider>
   );
