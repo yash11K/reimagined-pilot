@@ -21,7 +21,6 @@ import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import {
   SkeletonKpi,
-  SkeletonBarChart,
   SkeletonActivity,
   SkeletonStatCard,
 } from "@/components/ui/Skeleton";
