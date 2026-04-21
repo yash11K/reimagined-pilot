@@ -9,18 +9,16 @@ from kb_manager.database import get_db
 from kb_manager.queries import search as search_queries
 from kb_manager.schemas.files import FileSummary
 from kb_manager.schemas.jobs import JobSummary
-from kb_manager.schemas.sources import SourceSummary
 from kb_manager.schemas.search import (
     FileSearchBucket,
     GlobalSearchResponse,
     JobSearchBucket,
-    SourceSearchBucket,
 )
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-VALID_ENTITIES = {"files", "sources", "jobs"}
+VALID_ENTITIES = {"files", "jobs"}
 
 
 @router.get("/search", response_model=GlobalSearchResponse)
@@ -29,11 +27,11 @@ async def global_search(
     limit: int = Query(5, ge=1, le=50, description="Max results per category"),
     entity: str | None = Query(
         None,
-        description="Comma-separated entity filter: files,sources,jobs. Omit for all.",
+        description="Comma-separated entity filter: files,jobs. Omit for all.",
     ),
     db: AsyncSession = Depends(get_db),
 ) -> GlobalSearchResponse:
-    """Search across file titles/tags, source URLs/labels, and job labels."""
+    """Search across file titles/tags and job labels."""
 
     # Determine which buckets to query
     if entity is not None:
@@ -49,7 +47,6 @@ async def global_search(
         requested = VALID_ENTITIES
 
     empty_file_bucket = FileSearchBucket(items=[], total=0)
-    empty_source_bucket = SourceSearchBucket(items=[], total=0)
     empty_job_bucket = JobSearchBucket(items=[], total=0)
 
     # Fan out queries
@@ -61,15 +58,6 @@ async def global_search(
         )
     else:
         file_bucket = empty_file_bucket
-
-    if "sources" in requested:
-        raw_sources = await search_queries.search_sources(db, q, limit=limit)
-        source_bucket = SourceSearchBucket(
-            items=[SourceSummary(**s) for s in raw_sources["items"]],
-            total=raw_sources["total"],
-        )
-    else:
-        source_bucket = empty_source_bucket
 
     if "jobs" in requested:
         raw_jobs = await search_queries.search_jobs(db, q, limit=limit)
@@ -83,6 +71,5 @@ async def global_search(
     return GlobalSearchResponse(
         q=q,
         files=file_bucket,
-        sources=source_bucket,
         jobs=job_bucket,
     )
