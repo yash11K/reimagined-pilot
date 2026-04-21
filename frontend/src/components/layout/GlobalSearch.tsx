@@ -4,7 +4,6 @@ import { Search, FileText, Globe, Briefcase, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { globalSearch } from "@/api/endpoints";
 import { Badge, statusTone } from "@/components/ui/Badge";
-import { cn } from "@/lib/cn";
 import type {
   SearchFileHit,
   SearchSourceHit,
