@@ -1,0 +1,2298 @@
+{
+  "canonicalUrl": "https://www.avis.com/en/products-and-services/protections",
+  "metaTitle": "Protections & Coverages",
+  "description": "Avis offers several protections & coverages that will keep you safe during your rental.",
+  "showCarsTrucksToggle": false,
+  "topSpaceNeeded": false,
+  "i18n": {
+    "seo.metaDescription.airportStation": "Rent a car at {{station}} ({{mnemonic}}) with Avis Rent a Car. Select from a range of car options and local specials",
+    "seo.metaDescription.city": "Car Hire {{city}}, {{country}}➤ Best Price ✔ No Cancellation Fees ✔ AVIS Preferred Loyalty Program, 10% off every booking.",
+    "seo.metaDescription.nonAirportStation": "Rent a car at {{station}} with Avis Rent a Car. Select from a range of car options and local specials.",
+    "seo.metaDescription.station": "Car Hire {{station}}➤ Best Price ✔ No Cancellation Fees ✔ AVIS Preferred Loyalty Program, 10% off every booking.",
+    "seo.metaTitle.airportStation": "Car Rental {{title}} ({{mnemonic}}) | Avis Rent a Car",
+    "seo.metaTitle.city": "Car Rental in {{city}}, {{country}} | Avis",
+    "seo.metaTitle.nonAirportStation": "Car Rental {{title}} | Avis Rent a Car",
+    "seo.metaTitle.station": "Car Rental {{title}} | {{country}} | Avis"
+  },
+  "id": "basepage-d32825b106",
+  "language": "en-US",
+  "title": "Protections & Coverages",
+  "cssClassNames": "basepage page basicpage",
+  "lastModifiedDate": 1762886394387,
+  "templateName": "manualgrid",
+  "designPath": "/libs/settings/wcm/designs/default",
+  "cq:redirectPermanent": false,
+  ":type": "avis/components/page/basepage",
+  ":itemsOrder": [
+    "root",
+    "cq:featuredimage"
+  ],
+  ":items": {
+    "root": {
+      "id": "container-36bc552d1d",
+      "children": [
+        {
+          "name": "experiencefragment-header",
+          "path": "/conf/avis/settings/wcm/templates/manualgrid/structure/jcr:content/root/experiencefragment-header"
+        },
+        {
+          "name": "container",
+          "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container"
+        },
+        {
+          "name": "experiencefragment-footer",
+          "path": "/conf/avis/settings/wcm/templates/manualgrid/structure/jcr:content/root/experiencefragment-footer"
+        }
+      ],
+      "personalizationLocation": "content:avis:nam:countries:us:en_us:products-and-services:protections:jcr_content:root",
+      ":itemsOrder": [
+        "experiencefragment-header",
+        "container",
+        "experiencefragment-footer"
+      ],
+      ":items": {
+        "experiencefragment-header": {
+          "id": "experiencefragment-1376c34e41",
+          "name": "header",
+          "cssClassNames": "aem-xf",
+          "configured": true,
+          "localizedFragmentVariationPath": "/content/experience-fragments/avis/nam/countries/us/en_us/site/header/master/jcr:content",
+          ":itemsOrder": [
+            "root"
+          ],
+          ":items": {
+            "root": {
+              "id": "container-446317cc50",
+              "children": [
+                {
+                  "name": "container",
+                  "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/header/master/jcr:content/root/container"
+                }
+              ],
+              "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:header:master:jcr_content:root",
+              ":itemsOrder": [
+                "container"
+              ],
+              ":items": {
+                "container": {
+                  "id": "container-82ef8c448a",
+                  "centerTheColumns": false,
+                  "desktopSize": "column-12",
+                  "mobileSize": "column-12",
+                  "isFluid": true,
+                  "children": [
+                    {
+                      "name": "header",
+                      "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/header/master/jcr:content/root/container/header"
+                    }
+                  ],
+                  "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:header:master:jcr_content:root:container",
+                  ":itemsOrder": [
+                    "header"
+                  ],
+                  ":items": {
+                    "header": {
+                      "id": "header-b1b54561fd",
+                      "children": [
+                        {
+                          "name": "loginModal",
+                          "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/header/master/jcr:content/root/container/header/loginModal"
+                        },
+                        {
+                          "name": "loginmodal_1709902434",
+                          "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/header/master/jcr:content/root/container/header/loginmodal_1709902434"
+                        },
+                        {
+                          "name": "headernavigation",
+                          "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/header/master/jcr:content/root/container/header/headernavigation"
+                        },
+                        {
+                          "name": "bookingwidget",
+                          "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/header/master/jcr:content/root/container/header/bookingwidget"
+                        },
+                        {
+                          "name": "loginmodal",
+                          "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/header/master/jcr:content/root/container/header/loginmodal"
+                        }
+                      ],
+                      "attachBookingWidgetToHeader": false,
+                      "bookingWidgetState": "HIDDEN",
+                      "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:header:master:jcr_content:root:container:header",
+                      ":itemsOrder": [
+                        "loginModal",
+                        "loginmodal_1709902434",
+                        "headernavigation",
+                        "bookingwidget",
+                        "loginmodal"
+                      ],
+                      ":items": {
+                        "loginModal": {
+                          "id": "loginModal-909492f2e3",
+                          "i18n": {
+                            "amazonSettings.errorMessage.alreadyLinked.label": "Your Avis account is already linked with another Amazon account.",
+                            "amazonSettings.errorMessage.linkingFailed.label": "We are unable to process your request at this time. Please try again later.",
+                            "amazonSettings.errorMessage.notAvailable.label": "We're Sorry. Your account cannot be linked as Amazon Benefits are not available in your country.",
+                            "amazonSettings.linkedSuccessfully.description.label": "You have successfully linked your Avis Preferred and Amazon accounts. Book now to receive your exclusive Amazon benefits.",
+                            "amazonSettings.linkedSuccessfully.title.label": "Amazon benefits",
+                            "global.button.close.label": "Close",
+                            "global.button.continue.label": "Continue",
+                            "global.field.validation.emailInvalid.message": "Please enter a valid email.",
+                            "global.field.validation.fieldRequired.message": "Please fill-in {{field}}.",
+                            "global.field.validation.invalidLength.message": "{{field}} must be between {{minLength}} and {{maxLength}} characters.",
+                            "global.field.validation.onlyNumbers.message": "{{field}} can contain numbers only.",
+                            "global.noIAmNot.label": "No I'm not",
+                            "global.or.label": "or",
+                            "global.resend.label": "Resend",
+                            "global.thankYou.label": "Thank You",
+                            "global.thanksForLettingUsKnow.label": "Great. Thanks For Letting Us Know",
+                            "global.yesIAm.label": "Yes I am",
+                            "loginModal.addNewDiscountCode.text": "You can always \u003Cspan\u003Eadd new discounts code\u003C/span\u003E if you have one.",
+                            "loginModal.amazonCta.label": "Amazon",
+                            "loginModal.confirmEmployment.text": "By selecting yes, I confirm that I still work for this company and I am subject to the terms and conditions associated with my employer.",
+                            "loginModal.errorMessage.accountDisabled.label": "Account was disabled",
+                            "loginModal.errorMessage.amazonFailed.label": "Login with Amazon failed",
+                            "loginModal.errorMessage.header.label": "Error logging in",
+                            "loginModal.errorMessage.reCaptchaFailed.label": "reCAPTCHA validation failed",
+                            "loginModal.errorMessage.reCaptchaLevelUncertain.label": "reCAPTCHA confidence level uncertain",
+                            "loginModal.errorMessage.reCaptchaWrongPattern.label": "Invalid reCAPTCHA pattern",
+                            "loginModal.errorMessage.systemError.label": "The system can’t proceed with a login due to system error",
+                            "loginModal.errorMessage.wrongCredentials.label": "Wrong credentials",
+                            "loginModal.orLoginWith.label": "Or login with",
+                            "loginModal.recaptcha.label": "This site is protected by reCAPTCHA Enterprise and the Google \u003Ca href=\"https://policies.google.com/privacy\" target=\"_blank\" rel=\"noopener noreferrer\"\u003EPrivacy Policy\u003C/a\u003E and \u003Ca href=\"https://policies.google.com/terms\" target=\"_blank\" rel=\"noopener noreferrer\"\u003ETerms of Service\u003C/a\u003E apply.",
+                            "loginModal.rememberMe.label": "Remember me",
+                            "loginModal.rentalEmploymentCheckAlert.text": "You may be subject to further employment verification at the time of rental.",
+                            "loginModal.stayInCompliance.label": "Stay in Compliance With Your Company Policy",
+                            "loginModal.verifyEmployment.text": "Are you still working for or associated with {{companyName}}?",
+                            "mfa.modal.authentication.option.email.title": "Receive by email",
+                            "mfa.modal.authentication.option.text.title": "Receive by text",
+                            "mfa.modal.authentication.options.title": "How would you like to authenticate?",
+                            "mfa.modal.cta.getCode.title": "Get verification code",
+                            "mfa.modal.errorMessage.accountBlocked.label": "Your account is locked after exceeding maximum attempts to validate your OTP. Please unlock your account by clicking the link in the account lockout email sent to your registered email ID.",
+                            "mfa.modal.errorMessage.expiredCode.label": "The code has expired. Please request a new code and try again.",
+                            "mfa.modal.errorMessage.header.label": "Error authenticating",
+                            "mfa.modal.errorMessage.invalidCode.label": "The code you entered is not valid. Please try again.",
+                            "mfa.modal.errorMessage.maximumCodeSends.label": "You've reached the maximum amount of code sends. Please try again later or contact customer service.",
+                            "mfa.modal.errorMessage.systemError.label": "We are unable to process your request at this time. Please try again later.",
+                            "mfa.modal.screen.didNotReceiveCode.label": "Didn't receive a code?",
+                            "mfa.modal.screen.enterCode.codeField.placeholder": "Enter Security Code",
+                            "mfa.modal.screen.enterCode.codeField.title": "Security Code",
+                            "mfa.modal.screen.enterCode.email.description": "Enter the verification code sent to {{email}}",
+                            "mfa.modal.screen.enterCode.otherOptions.title": "Other options",
+                            "mfa.modal.screen.enterCode.phoneNumber.description": "Enter the verification code sent to {{phoneNumber}}",
+                            "mfa.modal.screen.enterCode.title": "Enter security code",
+                            "mfa.modal.screen.selectMethod.description": "For added security, we will send you a verification code to verify your identity.",
+                            "mfa.modal.screen.selectMethod.title": "Two Factor Authentication"
+                          },
+                          "rememberMeEnabled": true,
+                          "forgotUsernameOrPasswordTarget": "_self",
+                          "additionalForgotPasswordEnabled": false,
+                          "additionalForgotPasswordTarget": "_self",
+                          "createAccountTarget": "_self",
+                          "reCaptchaEnabled": true,
+                          "socialLinks": [],
+                          "showInFormView": false,
+                          "showSimplifiedDriveForm": false,
+                          "availableMfaMethods": [
+                            "email",
+                            "phone"
+                          ],
+                          "amazonLandingPageUrl": "/offers/partners/amazon-benefits",
+                          "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:header:master:jcr_content:root:container:header:loginModal",
+                          "dataLayer": {
+                            "loginModal-909492f2e3": {
+                              "@type": "avis/components/content/loginModal"
+                            }
+                          },
+                          ":type": "avis/components/content/loginModal"
+                        },
+                        "loginmodal_1709902434": {
+                          "id": "loginModal-854927520a",
+                          "i18n": {
+                            "amazonSettings.errorMessage.alreadyLinked.label": "Your Avis account is already linked with another Amazon account.",
+                            "amazonSettings.errorMessage.linkingFailed.label": "We are unable to process your request at this time. Please try again later.",
+                            "amazonSettings.errorMessage.notAvailable.label": "We're Sorry. Your account cannot be linked as Amazon Benefits are not available in your country.",
+                            "amazonSettings.linkedSuccessfully.description.label": "You have successfully linked your Avis Preferred and Amazon accounts. Book now to receive your exclusive Amazon benefits.",
+                            "amazonSettings.linkedSuccessfully.title.label": "Amazon benefits",
+                            "global.button.close.label": "Close",
+                            "global.button.continue.label": "Continue",
+                            "global.field.validation.emailInvalid.message": "Please enter a valid email.",
+                            "global.field.validation.fieldRequired.message": "Please fill-in {{field}}.",
+                            "global.field.validation.invalidLength.message": "{{field}} must be between {{minLength}} and {{maxLength}} characters.",
+                            "global.field.validation.onlyNumbers.message": "{{field}} can contain numbers only.",
+                            "global.noIAmNot.label": "No I'm not",
+                            "global.or.label": "or",
+                            "global.resend.label": "Resend",
+                            "global.thankYou.label": "Thank You",
+                            "global.thanksForLettingUsKnow.label": "Great. Thanks For Letting Us Know",
+                            "global.yesIAm.label": "Yes I am",
+                            "loginModal.addNewDiscountCode.text": "You can always \u003Cspan\u003Eadd new discounts code\u003C/span\u003E if you have one.",
+                            "loginModal.amazonCta.label": "Amazon",
+                            "loginModal.confirmEmployment.text": "By selecting yes, I confirm that I still work for this company and I am subject to the terms and conditions associated with my employer.",
+                            "loginModal.errorMessage.accountDisabled.label": "Account was disabled",
+                            "loginModal.errorMessage.amazonFailed.label": "Login with Amazon failed",
+                            "loginModal.errorMessage.header.label": "Error logging in",
+                            "loginModal.errorMessage.reCaptchaFailed.label": "reCAPTCHA validation failed",
+                            "loginModal.errorMessage.reCaptchaLevelUncertain.label": "reCAPTCHA confidence level uncertain",
+                            "loginModal.errorMessage.reCaptchaWrongPattern.label": "Invalid reCAPTCHA pattern",
+                            "loginModal.errorMessage.systemError.label": "The system can’t proceed with a login due to system error",
+                            "loginModal.errorMessage.wrongCredentials.label": "Wrong credentials",
+                            "loginModal.orLoginWith.label": "Or login with",
+                            "loginModal.recaptcha.label": "This site is protected by reCAPTCHA Enterprise and the Google \u003Ca href=\"https://policies.google.com/privacy\" target=\"_blank\" rel=\"noopener noreferrer\"\u003EPrivacy Policy\u003C/a\u003E and \u003Ca href=\"https://policies.google.com/terms\" target=\"_blank\" rel=\"noopener noreferrer\"\u003ETerms of Service\u003C/a\u003E apply.",
+                            "loginModal.rememberMe.label": "Remember me",
+                            "loginModal.rentalEmploymentCheckAlert.text": "You may be subject to further employment verification at the time of rental.",
+                            "loginModal.stayInCompliance.label": "Stay in Compliance With Your Company Policy",
+                            "loginModal.verifyEmployment.text": "Are you still working for or associated with {{companyName}}?",
+                            "mfa.modal.authentication.option.email.title": "Receive by email",
+                            "mfa.modal.authentication.option.text.title": "Receive by text",
+                            "mfa.modal.authentication.options.title": "How would you like to authenticate?",
+                            "mfa.modal.cta.getCode.title": "Get verification code",
+                            "mfa.modal.errorMessage.accountBlocked.label": "Your account is locked after exceeding maximum attempts to validate your OTP. Please unlock your account by clicking the link in the account lockout email sent to your registered email ID.",
+                            "mfa.modal.errorMessage.expiredCode.label": "The code has expired. Please request a new code and try again.",
+                            "mfa.modal.errorMessage.header.label": "Error authenticating",
+                            "mfa.modal.errorMessage.invalidCode.label": "The code you entered is not valid. Please try again.",
+                            "mfa.modal.errorMessage.maximumCodeSends.label": "You've reached the maximum amount of code sends. Please try again later or contact customer service.",
+                            "mfa.modal.errorMessage.systemError.label": "We are unable to process your request at this time. Please try again later.",
+                            "mfa.modal.screen.didNotReceiveCode.label": "Didn't receive a code?",
+                            "mfa.modal.screen.enterCode.codeField.placeholder": "Enter Security Code",
+                            "mfa.modal.screen.enterCode.codeField.title": "Security Code",
+                            "mfa.modal.screen.enterCode.email.description": "Enter the verification code sent to {{email}}",
+                            "mfa.modal.screen.enterCode.otherOptions.title": "Other options",
+                            "mfa.modal.screen.enterCode.phoneNumber.description": "Enter the verification code sent to {{phoneNumber}}",
+                            "mfa.modal.screen.enterCode.title": "Enter security code",
+                            "mfa.modal.screen.selectMethod.description": "For added security, we will send you a verification code to verify your identity.",
+                            "mfa.modal.screen.selectMethod.title": "Two Factor Authentication"
+                          },
+                          "modalTitle": "Login",
+                          "memberBenefitsBannerText": "modal:login",
+                          "userIdFieldTitle": "User ID",
+                          "userIdFieldPlaceholder": "enter your user ID",
+                          "passwordFieldTitle": "Password",
+                          "passwordFieldPlaceholder": "enter your password",
+                          "rememberMeEnabled": true,
+                          "forgotUsernameOrPasswordText": "Forgot username or password",
+                          "forgotUsernameOrPasswordLink": "/en/home/reset-password",
+                          "forgotUsernameOrPasswordTarget": "_self",
+                          "additionalForgotPasswordEnabled": false,
+                          "additionalForgotPasswordTarget": "_self",
+                          "loginCtaText": "Log in",
+                          "createAccountText": "Create account",
+                          "createAccountLink": "/en/demo/registration-form",
+                          "createAccountTarget": "_self",
+                          "reCaptchaEnabled": false,
+                          "socialLinks": [
+                            "amazon"
+                          ],
+                          "showInFormView": true,
+                          "showSimplifiedDriveForm": false,
+                          "availableMfaMethods": [
+                            "email",
+                            "phone"
+                          ],
+                          "amazonLandingPageUrl": "/offers/partners/amazon-benefits",
+                          "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:header:master:jcr_content:root:container:header:loginmodal_1709902434",
+                          "dataLayer": {
+                            "loginModal-854927520a": {
+                              "@type": "avis/components/content/loginModal",
+                              "repo:modifyDate": "2025-05-28T17:57:38Z"
+                            }
+                          },
+                          ":type": "avis/components/content/loginModal"
+                        },
+                        "headernavigation": {
+                          "id": "headerNavigation-c25acbac37",
+                          "showNudge": true,
+                          "accountMenuTitle": "My Avis",
+                          "myProfileCtaLink": "/en/avis-preferred/dashboard/profile",
+                          "myProfileCtaTarget": "_self",
+                          "accountActivationStepsNumber": "5",
+                          "loginPrompt": "Log in for best rates",
+                          "loginPromptTimeToShow": 5,
+                          "signInOrJoinCta": "Sign in or Join ",
+                          "signInMenuTitle": "Sign in to get your best rates",
+                          "signInCtaText": "Sign in",
+                          "createAccountCtaText": "Create account",
+                          "createAccountCtaLink": "/en/loyalty-profile/member-rates-enrollment",
+                          "createAccountCtaTarget": "_self",
+                          "showWelcomePopup": true,
+                          "welcomePopupMobileAppDescription": "\u003Cp data-pm-slice=\"0 0 []\"\u003EIt's you rental. Take back control with the Avis App\u003C/p\u003E\u003Cp\u003E-Upgrade, control and return your vehicle.\u003C/p\u003E\u003Cp\u003E-Find gas and parking.\u003C/p\u003E\u003Cp\u003E-And many more real time features.\u003C/p\u003E",
+                          "amazonSettings": {
+                            "menuHeaderDesktop": "Enjoy more benefits with an Avis Preferred account",
+                            "menuHeaderMobile": "Enjoy more benefits with an Avis Preferred account",
+                            "createAccountCtaText": "Create account",
+                            "createAccountCtaLink": "/en/loyalty-profile/member-rates-enrollment",
+                            "createAccountCtaTarget": "_self",
+                            "linkAmazonText": "Link Existing Preferred Account",
+                            "connectAccountCtaText": "Connect Preferred Account"
+                          },
+                          "logo": {
+                            "source": "https://images.avis.com/is/content/abggwebprod/Logo-1",
+                            "description": "Logo.svg",
+                            "crops": []
+                          },
+                          "navigationList": [
+                            {
+                              "title": "Book",
+                              "target": "_self",
+                              "url": "/en/reservation/make-reservation",
+                              "subLinks": null,
+                              "banners": []
+                            },
+                            {
+                              "title": "Manage Booking",
+                              "url": null,
+                              "subLinks": [
+                                {
+                                  "title": "View/Modify/Cancel",
+                                  "url": "/en/reservation/view-modify-cancel"
+                                },
+                                {
+                                  "title": "AVIS PRECHECK",
+                                  "url": "/en/reservation/precheck"
+                                },
+                                {
+                                  "title": "Get E-Receipt",
+                                  "url": "/en/reservation/ereceipt"
+                                }
+                              ],
+                              "banners": []
+                            },
+                            {
+                              "title": "Business Rentals",
+                              "url": null,
+                              "subLinks": [
+                                {
+                                  "title": "Small & Mid-size Business",
+                                  "url": "/en/business-programs/small-mid-sized-business/partner-1"
+                                },
+                                {
+                                  "title": "Sports & Entertainment",
+                                  "url": "https://www.avisbudgetgroup.com/media-entertainment/"
+                                }
+                              ],
+                              "banners": []
+                            },
+                            {
+                              "title": "Avis Preferred",
+                              "url": "/en/avis-preferred",
+                              "subLinks": null,
+                              "banners": []
+                            },
+                            {
+                              "title": "Deals",
+                              "url": null,
+                              "subLinks": [
+                                {
+                                  "title": "US Deals",
+                                  "url": "/en/offers/us-offers"
+                                },
+                                {
+                                  "title": "International Deals",
+                                  "url": "/en/offers/international"
+                                },
+                                {
+                                  "title": "Partner Deals",
+                                  "url": "/en/offers/partners"
+                                },
+                                {
+                                  "title": "Weekly Car Rental Deals",
+                                  "url": "/en/offers/us-offers/weekly-car-rental-deal"
+                                },
+                                {
+                                  "title": "Spring Flash Sale",
+                                  "url": "/en/offers/us-offers/rental-car-flash-sale"
+                                },
+                                {
+                                  "title": "Spring Savings Event",
+                                  "url": "/en/offers/us-offers/spring-sale"
+                                }
+                              ],
+                              "banners": [
+                                {
+                                  "ctaLink": "/en/offers/us-offers/car-cation",
+                                  "bodyText": "\u003Cp\u003EEnjoy up to $75 off your rental when you book by 4/16/26. Terms apply.\u003C/p\u003E",
+                                  "headerText": "Car Cation Sale",
+                                  "image": {
+                                    "source": "https://images.avis.com/is/image/abggwebprod/Desktop- 656x328",
+                                    "description": "Desktop- 656x328.png",
+                                    "crops": [
+                                      "1-1",
+                                      "2-1",
+                                      "3-1",
+                                      "4-5",
+                                      "9-16",
+                                      "17-10",
+                                      "3-4",
+                                      "16-9"
+                                    ]
+                                  },
+                                  "ctaTarget": "_self",
+                                  "ctaType": "button",
+                                  "ctaStyle": "primary",
+                                  "awdBcdCode": null,
+                                  "couponCode": null,
+                                  "typeOfActionButton": "normalButton",
+                                  "promoType": "standard-promo",
+                                  "fragmentPath": "/content/dam/avis/na/us/en_us/common/demo-space/home/flash-sale-winter/jcr:content/data/master"
+                                },
+                                {
+                                  "ctaLink": "/en/offers/us-offers/pay-now-and-save-up-to-30",
+                                  "promotionId": "hp-122225-offers-s1-spring35",
+                                  "bodyText": "\u003Cp\u003E\u003Cspan style=\"font-size: 11pt; font-family: Aptos, sans-serif;\"\u003ESave more when you pay now - wherever the road takes you.\u003C/span\u003E\u003C/p\u003E",
+                                  "headerText": "START SPRING WITH UP TO 35% OFF",
+                                  "image": {
+                                    "source": "https://images.avis.com/is/image/abggwebprod/shutterstock_2262936183",
+                                    "description": "Young couple talking, drinking a coffee watching the sunset from their car.",
+                                    "crops": [
+                                      "1-1",
+                                      "2-1",
+                                      "3-1",
+                                      "4-5",
+                                      "9-16",
+                                      "17-10",
+                                      "3-4",
+                                      "16-9"
+                                    ]
+                                  },
+                                  "ctaTarget": "_self",
+                                  "ctaType": "button",
+                                  "ctaStyle": "primary",
+                                  "awdBcdCode": null,
+                                  "couponCode": null,
+                                  "typeOfActionButton": "normalButton",
+                                  "promoType": "standard-promo",
+                                  "fragmentPath": "/content/dam/avis/na/us/en_us/common/demo-space/home/pay-now-winter/jcr:content/data/master"
+                                }
+                              ]
+                            }
+                          ],
+                          "accountMenuItems": [
+                            {
+                              "title": "Rentals",
+                              "target": "_self",
+                              "url": "/en/avis-preferred/dashboard/my-activity/past-rentals"
+                            },
+                            {
+                              "title": "Rewards",
+                              "target": "_self",
+                              "url": "/en/avis-preferred/dashboard/rewards"
+                            },
+                            {
+                              "title": "Account",
+                              "target": "_self",
+                              "url": "/en/avis-preferred/dashboard/profile"
+                            },
+                            {
+                              "title": "Preferences",
+                              "target": "_self",
+                              "url": "/en/avis-preferred/dashboard/profile/preferences"
+                            }
+                          ],
+                          "languageList": [
+                            {
+                              "code": "en_us",
+                              "name": "English",
+                              "link": "/en/products-and-services/protections",
+                              "shortName": "en",
+                              "active": true
+                            },
+                            {
+                              "code": "fr_us",
+                              "name": "Français",
+                              "link": "/fr/products-and-services/protections",
+                              "shortName": "fr",
+                              "active": false
+                            }
+                          ],
+                          "hamburgerMenu": {
+                            "navigationList": [
+                              {
+                                "title": "Locations",
+                                "subLinks": [
+                                  {
+                                    "title": "Find a Location",
+                                    "url": "/en/locations/find-a-location"
+                                  },
+                                  {
+                                    "title": "US Airport Rental Locations",
+                                    "url": "/en/locations/top-airport-locations"
+                                  },
+                                  {
+                                    "title": "US Car Rental Locations",
+                                    "url": "/en/locations/nam/us"
+                                  },
+                                  {
+                                    "title": "Global Car Rental Locations",
+                                    "url": "/en/locations/avisworldwide"
+                                  },
+                                  {
+                                    "title": "Chicago",
+                                    "url": "/en/locations/nam/us/il/chicago"
+                                  },
+                                  {
+                                    "title": "Las Vegas",
+                                    "url": "/en/locations/nam/us/nv/las-vegas"
+                                  },
+                                  {
+                                    "title": "Los Angeles",
+                                    "url": "/en/locations/nam/us/ca/los-angeles"
+                                  }
+                                ]
+                              },
+                              {
+                                "title": "Products & Services",
+                                "subLinks": [
+                                  {
+                                    "title": "See All Products & Services",
+                                    "url": "/en/products-and-services"
+                                  },
+                                  {
+                                    "title": "Protections & Coverages",
+                                    "url": "/en/products-and-services/protections"
+                                  },
+                                  {
+                                    "title": "Rental Addons",
+                                    "url": "/en/products-and-services/products"
+                                  },
+                                  {
+                                    "title": "Long Term Car Rental",
+                                    "url": "/en/products-and-services/services/long-term-car-rental"
+                                  },
+                                  {
+                                    "title": "One-Way Car Rentals",
+                                    "url": "/en/products-and-services/services/one-way-car-rental"
+                                  },
+                                  {
+                                    "title": "Miles, Points & Partners",
+                                    "url": "/en/business-programs/miles-points-partners"
+                                  },
+                                  {
+                                    "title": "Meetings & Groups Car Rentals",
+                                    "target": "_self",
+                                    "url": "/en/products-and-services/services/group-rental/"
+                                  }
+                                ]
+                              },
+                              {
+                                "title": "Car sales",
+                                "subLinks": [
+                                  {
+                                    "title": "Avis Car Sales",
+                                    "url": "https://www.aviscarsales.com/?utm_source=avis.com&utm_medium=referral"
+                                  }
+                                ]
+                              },
+                              {
+                                "title": "NEED ASSISTANCE?",
+                                "subLinks": [
+                                  {
+                                    "title": "US FAQS",
+                                    "url": "/en/customer-service/faqs"
+                                  },
+                                  {
+                                    "title": "Customer Service",
+                                    "url": "/en/customer-service"
+                                  },
+                                  {
+                                    "title": "Get E-Receipt",
+                                    "url": "/en/reservation/ereceipt"
+                                  },
+                                  {
+                                    "title": "Worldwide Telephone Numbers",
+                                    "url": "/en/customer-service/worldwide-telephone-numbers"
+                                  },
+                                  {
+                                    "title": "TTD / TTY Information",
+                                    "url": "/en/customer-service/tty-and-tdd-information"
+                                  },
+                                  {
+                                    "title": "Claims/Accident Form",
+                                    "url": "/en/customer-service/claims-and-accident-form"
+                                  },
+                                  {
+                                    "title": "Travel Guides",
+                                    "url": "/en/travel"
+                                  }
+                                ],
+                                "accented": true
+                              }
+                            ],
+                            "vehicleList": [
+                              {
+                                "title": "Cars",
+                                "url": "/en/cars/vehicles/us",
+                                "image": {
+                                  "source": "https://images.avis.com/is/image/abggwebprod/2025-honda-civic-sport-5door-hatchback-white_featured",
+                                  "description": "2025-honda-civic-sport-5door-hatchback-white_featured.png",
+                                  "crops": [
+                                    "1-1",
+                                    "2-1",
+                                    "3-1",
+                                    "4-5",
+                                    "9-16",
+                                    "17-10",
+                                    "3-4",
+                                    "16-9"
+                                  ]
+                                }
+                              },
+                              {
+                                "title": "Trucks",
+                                "url": "/en/cars/pickup-truck-rental",
+                                "image": {
+                                  "source": "https://images.avis.com/is/image/abggwebprod/2019-toyota-tacoma-sr5-access-cab-pick-up-white_featured",
+                                  "description": "2019-toyota-tacoma-sr5-access-cab-pick-up-white_featured.png",
+                                  "crops": [
+                                    "1-1",
+                                    "2-1",
+                                    "3-1",
+                                    "4-5",
+                                    "9-16",
+                                    "17-10",
+                                    "3-4",
+                                    "16-9"
+                                  ]
+                                }
+                              },
+                              {
+                                "title": "SUVs",
+                                "url": "/en/cars/suv-rental",
+                                "image": {
+                                  "source": "https://images.avis.com/is/image/abggwebprod/2025-gmc-terrain-elevation-awd-suv-white_featured",
+                                  "description": "2025-gmc-terrain-elevation-awd-suv-white_featured.png",
+                                  "crops": [
+                                    "1-1",
+                                    "2-1",
+                                    "3-1",
+                                    "4-5",
+                                    "9-16",
+                                    "17-10",
+                                    "3-4",
+                                    "16-9"
+                                  ]
+                                }
+                              },
+                              {
+                                "title": "Vans",
+                                "url": "/en/cars/van-rental",
+                                "image": {
+                                  "source": "https://images.avis.com/is/image/abggwebprod/2025-ford-transit-xlt-low-roof-long-passenger-van-white_featured-1",
+                                  "description": "2025-ford-transit-xlt-low-roof-long-passenger-van-white_featured.png",
+                                  "crops": [
+                                    "1-1",
+                                    "2-1",
+                                    "3-1",
+                                    "4-5",
+                                    "9-16",
+                                    "17-10",
+                                    "3-4",
+                                    "16-9"
+                                  ]
+                                }
+                              },
+                              {
+                                "title": "Electric",
+                                "url": "/en/cars/electric-car-rentals",
+                                "image": {
+                                  "source": "https://images.avis.com/is/image/abggwebprod/2025-tesla-model-y-electric-long-range-awd-suv-white_featured",
+                                  "description": "2025-tesla-model-y-electric-long-range-awd-suv-white_featured.png",
+                                  "crops": [
+                                    "1-1",
+                                    "2-1",
+                                    "3-1",
+                                    "4-5",
+                                    "9-16",
+                                    "17-10",
+                                    "3-4",
+                                    "16-9"
+                                  ]
+                                }
+                              },
+                              {
+                                "title": "Luxury",
+                                "url": "/en/cars/luxury-car-rental",
+                                "image": {
+                                  "source": "https://images.avis.com/is/image/abggwebprod/2025-mercedes-benz-c-class-plug-in-300-de-technology-sedan-white_featured",
+                                  "description": "2025-mercedes-benz-c-class-plug-in-300-de-technology-sedan-white_featured.png",
+                                  "crops": [
+                                    "1-1",
+                                    "2-1",
+                                    "3-1",
+                                    "4-5",
+                                    "9-16",
+                                    "17-10",
+                                    "3-4",
+                                    "16-9"
+                                  ]
+                                }
+                              }
+                            ],
+                            "androidAppUrl": "https://play.google.com/store/apps/details?id=com.avis.androidapp",
+                            "iosAppUrl": "https://itunes.apple.com/app/avis-car-rental-reserve-then/id308342527?mt=8",
+                            "seeAllLinkUrl": "/en/cars",
+                            "seeAllLinkTarget": "_blank"
+                          },
+                          "showLoyaltyPoints": false,
+                          "loginLandingPageUrl": "/en/avis-preferred/login",
+                          "i18n": {
+                            "amazonSettings.logout.label": "Log Out of Amazon",
+                            "global.back.label": "Back",
+                            "global.login.label": "Log In",
+                            "global.logout.label": "Log Out",
+                            "global.loyaltyPointsUnits.label": "pts",
+                            "global.myProfile.label": "My profile",
+                            "global.viewDetails.placeholder.label": "Book Now",
+                            "header.accountMenu.completeProfile.label": "Complete Profile",
+                            "header.accountMenu.completedSteps.label": "Steps {{steps}}/{{totalSteps}} complete",
+                            "header.accountMenu.nudge.description": "Unlock benefits like skipping the counter.",
+                            "header.accountMenu.nudge.title": "Complete Profile To Get Avis Preferred",
+                            "header.accountMenu.tooltip.label": "Complete profile to unlock benefits",
+                            "header.currentRentalPopup.carSection.label": "Select your car",
+                            "header.currentRentalPopup.locationSection.label": "Pick up location",
+                            "header.hamburger.country.label": "Country",
+                            "header.hamburger.greeting.label": "Hi, {{name}}",
+                            "header.hamburger.language.label": "Language",
+                            "header.hamburger.menu.label.mobile": "header.hamburger.menu.label.mobile",
+                            "header.hamburger.mobileApp.download.header": "Download the Avis app",
+                            "header.hamburger.mobileApp.download.text": "New Look, New Experience. Total Control.",
+                            "header.hamburger.vehicles.label": "Vehicles",
+                            "header.hamburger.vehicles.seeAll.label": "See All",
+                            "header.offlineReservationAlert.text": "Maintenance updates are in progress. Reservations are not affected, however, some functionality may not be available during this time.",
+                            "rentalDashboard.chooseMyVehicle.label": "Choose My Vehicle",
+                            "rentalDashboard.confirmationNumber.label": "Confirmation number #{{id}}",
+                            "rentalDashboard.selectTodaysRental.label": "Select today's rental",
+                            "rentalDashboard.selectYourCar.label": "Select your car from a list of available vehicles at your location",
+                            "reservationCheckout.timer.label": "Time left to book",
+                            "reservationCheckout.timer.popup.continueButton.label": "Continue",
+                            "reservationCheckout.timer.popup.description": "It looks like you've taken a break. To make sure any information you've given us is kept secure your session will time-out in 5 minutes. If you're still there and would like to carry on, just press continue.",
+                            "reservationCheckout.timer.popup.emailThisSearchButton.label": "Email This Search",
+                            "reservationCheckout.timer.popup.title": "Your session is about to expire"
+                          },
+                          "dataLayer": {
+                            "headerNavigation-c25acbac37": {
+                              "@type": "avis/components/content/headerNavigation",
+                              "repo:modifyDate": "2026-04-08T18:03:36Z"
+                            }
+                          },
+                          ":type": "avis/components/content/headerNavigation"
+                        },
+                        "bookingwidget": {
+                          "id": "bookingwidget-500dc44b75",
+                          "allowGeolocation": true,
+                          "showCarTruckToggle": false,
+                          "showResidency": true,
+                          "showDiscountCode": true,
+                          "discountCodeEligibility": [
+                            "loggedIn",
+                            "recognized",
+                            "guest"
+                          ],
+                          "showCouponCode": true,
+                          "couponCodeEligibility": [
+                            "loggedIn",
+                            "recognized",
+                            "guest"
+                          ],
+                          "showRateCode": true,
+                          "rateCodeEligibility": [
+                            "loggedIn",
+                            "recognized",
+                            "guest"
+                          ],
+                          "dateTimeSettings": {
+                            "maxCalendarDays": 365,
+                            "maxBookingPeriod": 330,
+                            "defaultTime": "12:00",
+                            "timeSpan": "30m"
+                          },
+                          "ageMode": "selectAge",
+                          "defaultAge": "25+",
+                          "minimalAge": 16,
+                          "ageList": [
+                            "25+",
+                            "24",
+                            "23",
+                            "22",
+                            "21",
+                            "20",
+                            "19",
+                            "18"
+                          ],
+                          "residencies": {
+                            "PR": "Puerto Rico",
+                            "PT": "Portugal",
+                            "PY": "Paraguay",
+                            "QA": "Qatar",
+                            "QB": "Bosnia",
+                            "QC": "Russian Federation",
+                            "QM": "North Macedonia",
+                            "AB": "Aruba",
+                            "QS": "Slovenia",
+                            "AD": "Andorra",
+                            "QV": "Slovak Republic",
+                            "AF": "Afghanistan",
+                            "AG": "Antigua",
+                            "AI": "Anguilla",
+                            "AL": "Albania",
+                            "AM": "Armenia",
+                            "AN": "Curacao (Netherland Antilles)",
+                            "AO": "Angola",
+                            "AR": "Argentina",
+                            "AS": "Samoa (American)",
+                            "AT": "Austria",
+                            "AU": "Australia",
+                            "RI": "Reunion Islands",
+                            "AZ": "Azerbaijan",
+                            "RO": "Romania",
+                            "BA": "Belarus",
+                            "BB": "Barbados",
+                            "BE": "Belgium",
+                            "BG": "Bulgaria",
+                            "RW": "Rwanda",
+                            "BH": "Bahrain",
+                            "BI": "Burundi",
+                            "BL": "Bangladesh",
+                            "BM": "Bermuda",
+                            "BN": "Brunei",
+                            "BO": "Bolivia",
+                            "SA": "Saudi Arabia",
+                            "BP": "Benin (Peoples Republic of)",
+                            "SB": "Sabah",
+                            "BR": "Brazil",
+                            "SC": "Seychelles",
+                            "BS": "Bahamas",
+                            "SD": "Sudan",
+                            "SE": "Sweden",
+                            "BT": "Bhutan",
+                            "BU": "Myanmar",
+                            "SG": "Singapore",
+                            "BW": "Botswana",
+                            "SI": "Solomon Islands",
+                            "BY": "St Barthelemy",
+                            "SK": "St Kitts, Nevis",
+                            "BZ": "Belize",
+                            "SL": "Sierra Leona",
+                            "SM": "San Marino",
+                            "SN": "Senegal",
+                            "SO": "Society Islands",
+                            "SP": "Saipan",
+                            "CA": "Canada",
+                            "SQ": "Somali Dem Rep",
+                            "CB": "Cape Verdi Is.",
+                            "SR": "Suriname",
+                            "CD": "Chad",
+                            "ST": "Soa Tome",
+                            "CE": "Caroline Islands",
+                            "CF": "Central African Republic",
+                            "SW": "Namibia",
+                            "CG": "Congo",
+                            "CH": "Switzerland",
+                            "CI": "Ivory Coast",
+                            "SY": "Syria",
+                            "CJ": "Comores",
+                            "SZ": "Swaziland",
+                            "CK": "Cook Islands (Rarotonga)",
+                            "CL": "Chile",
+                            "CM": "Cameroon",
+                            "CN": "China",
+                            "CO": "Colombia",
+                            "TA": "Tahiti (French Polynesia)",
+                            "TB": "Taiwan",
+                            "TC": "Turks and Caicos",
+                            "CR": "Costa Rica",
+                            "CT": "Cayman Islands",
+                            "CU": "Cuba",
+                            "CV": "US Virgin Islands (St Thomas)",
+                            "TG": "Togo",
+                            "TH": "Thailand",
+                            "CX": "US Virgin Islands (St Croix)",
+                            "CY": "Cyprus",
+                            "CZ": "Czech Republic",
+                            "TL": "Tortola (British Virgin Isl)",
+                            "TN": "Tunisia",
+                            "TO": "Tonga",
+                            "TP": "Timor",
+                            "TR": "Turkey",
+                            "TT": "Trinidad & Tobago",
+                            "DE": "Germany",
+                            "TZ": "Tanzania",
+                            "DK": "Denmark",
+                            "DM": "Dominica",
+                            "DO": "Dominican Republic",
+                            "UA": "Ukraine",
+                            "DR": "Djibouti Rep",
+                            "UE": "United Arab Emirates",
+                            "UG": "Uganda",
+                            "DZ": "Algeria",
+                            "EC": "Ecuador",
+                            "US": "United States",
+                            "EE": "Estonia",
+                            "UV": "Burkina Faso",
+                            "EG": "Egypt",
+                            "UY": "Uruguay",
+                            "EI": "Ellice Islands",
+                            "EL": "El Salvador",
+                            "EQ": "Equatorial Guinea",
+                            "VC": "St Vincent",
+                            "ES": "Spain",
+                            "VE": "Venezuela",
+                            "ET": "Ethiopia",
+                            "EU": "St Eustatius",
+                            "VN": "Vietnam",
+                            "FA": "Falkland Islands",
+                            "FI": "Finland",
+                            "FJ": "Fiji Islands",
+                            "FO": "Faroe Islands",
+                            "FR": "France",
+                            "GA": "Gabon",
+                            "GB": "United Kingdom",
+                            "WS": "Samoa (Western)",
+                            "GD": "Grenada",
+                            "GE": "Georgia",
+                            "GF": "French Guiana",
+                            "GG": "Greenland",
+                            "GH": "Ghana",
+                            "GI": "Gibraltar",
+                            "GL": "Gilbert Islands",
+                            "GM": "Gambia",
+                            "GN": "Guinea",
+                            "GP": "Guadeloupe (French West Indies)",
+                            "GR": "Greece",
+                            "GS": "Guinea-Bissau",
+                            "GT": "Guatemala",
+                            "GU": "Guam",
+                            "GY": "Guyana",
+                            "HD": "Honduras",
+                            "HK": "Hong Kong",
+                            "HR": "Croatia",
+                            "YD": "Yemen",
+                            "YE": "Bonaire",
+                            "HT": "Haiti",
+                            "HU": "Hungary",
+                            "ID": "Indonesia",
+                            "IE": "Ireland (Republic)",
+                            "YU": "Serbia & Montenegro",
+                            "IL": "Israel",
+                            "IN": "India",
+                            "ZA": "South Africa",
+                            "ZB": "Zambia",
+                            "IQ": "Iraq",
+                            "IR": "Iran",
+                            "IS": "Iceland",
+                            "IT": "Italy",
+                            "ZM": "Congo (Dem. Rep. of the)",
+                            "ZY": "St Martin /St Maarten",
+                            "JM": "Jamaica",
+                            "JN": "St John",
+                            "JO": "Jordan",
+                            "JP": "Japan",
+                            "KD": "North Korea",
+                            "KE": "Kenya",
+                            "KF": "Zimbabwe",
+                            "KH": "Cambodia",
+                            "KI": "Kiribati",
+                            "KP": "South Korea",
+                            "KW": "Kuwait",
+                            "KZ": "Kazakhstan",
+                            "LA": "Laos",
+                            "LB": "Lebanon",
+                            "LC": "St Lucia",
+                            "LE": "Line Islands",
+                            "LI": "Liechtenstein",
+                            "LK": "Sri Lanka",
+                            "LR": "Liberia",
+                            "LS": "Lesotho",
+                            "LT": "Lithuania",
+                            "LU": "Luxembourg",
+                            "LV": "Latvia",
+                            "LY": "Libya",
+                            "MA": "Morocco",
+                            "MD": "Moldova",
+                            "MG": "Madagascar",
+                            "MI": "Maldives",
+                            "MK": "Macau",
+                            "ML": "Mali",
+                            "MM": "Mauritania",
+                            "MO": "Mongolia",
+                            "MQ": "Martinique",
+                            "MR": "Mariana Islands",
+                            "MS": "Marshall Islands",
+                            "MT": "Malta",
+                            "MU": "Mauritius",
+                            "MW": "Malawi",
+                            "MX": "Mexico",
+                            "MY": "Malaysia",
+                            "MZ": "Mozambique",
+                            "NA": "Nauru",
+                            "NC": "New Caledonia",
+                            "NE": "Nepal",
+                            "NG": "Nigeria",
+                            "NH": "Vanuatu",
+                            "NI": "Nicaragua",
+                            "NL": "The Netherlands",
+                            "NO": "Norway",
+                            "NR": "Niger",
+                            "NS": "Norfolk Islands",
+                            "NU": "Papua New Guinea",
+                            "NZ": "New Zealand",
+                            "OM": "Oman",
+                            "PA": "Panama",
+                            "PE": "Peru",
+                            "PH": "Philippines",
+                            "PI": "Phoenix Islands",
+                            "PK": "Pakistan",
+                            "PL": "Poland"
+                          },
+                          "defaultResidency": "US",
+                          "searchButtonStyleMobile": "iconOnly",
+                          "editButtonStyleMobile": "iconOnly",
+                          "amountOfAirports": 5,
+                          "amountOfCities": 5,
+                          "amountOfDowntown": 5,
+                          "amountOfPoI": 5,
+                          "amountOfTrainStation": 5,
+                          "amountOfTruckLocation": 5,
+                          "amountOfNeighborhoodLocations": 5,
+                          "enableMemberNumberValidation": true,
+                          "enableAARPMemberNumberValidation": true,
+                          "enableAARPPIIValidation": true,
+                          "blockedAwdCodes": [],
+                          "disablePolygon": false,
+                          "showStationDirection": false,
+                          "hideDropoff": true,
+                          "useScrollingStick": true,
+                          "searchButtonStyle": "iconOnly",
+                          "minimumRentalDuration": 0,
+                          "mileageLimitOptions": [],
+                          "displayLongTermBooking": false,
+                          "applyWizardNumberModalModel": {
+                            "showApplyWizardNumberCta": true,
+                            "applyWizardNumberCtaText": "Apply Wizard Number",
+                            "modalTitle": "Apply Wizard Number",
+                            "modalSubtitle": "Apply your Wizard Number to easily manage your reservation",
+                            "modalCtaText": "Apply",
+                            "modalSignInBlockTitle": "Sign in to get member rates",
+                            "modalSignInBlockSubtitle": "Did you know you will get our best rates when you log in to your account?",
+                            "modalSignInCtaText": "Log in"
+                          },
+                          "i18n": {
+                            "applyWizardNumberModal.error.header": "Error applying wizard number",
+                            "applyWizardNumberModal.errorMessage.doesNotMatchWizardNumber.label": "Last name does not match the wizard number.",
+                            "applyWizardNumberModal.errorMessage.systemError.label": "We are unable to process your request at this time. Please try again later.",
+                            "applyWizardNumberModal.errorMessage.unidentifiedWizardNumber.label": "The information provided does not match our records. Please ensure that the information you have entered is correct and try again.",
+                            "applyWizardNumberModal.field.wizardNumber.hint": "Your wizard number is a six character unique code assigned to you once enrolled.",
+                            "applyWizardNumberModal.field.wizardNumber.placeholder": "Enter your wizard number",
+                            "applyWizardNumberModal.field.wizardNumber.title": "Wizard number",
+                            "avis.payWithPoints.perDayPriceExceeded.modal.description": "Reservations with a non-discounted daily rate of more than USD $225 cannot be made with points.",
+                            "avisfirst.athome.delivery.label": "at-home delivery",
+                            "avisfirst.bookingwidget.available.label": "AVAILABLE",
+                            "avisfirst.bookingwidget.deliveryPickup.label": "Delivered and picked up at this address",
+                            "avisfirst.bookingwidget.deliveryToYourAddress.label": "See if we deliver to your address",
+                            "avisfirst.bookingwidget.selectAreas.label": "Now in select areas",
+                            "avisfirst.curbside.delivery.label": "curbside delivery",
+                            "bookingWidget.aarp.member.invalid.message": "Please provide a valid membership ID, or click the link indicating you do not have your membership ID, and provide your full name and address",
+                            "bookingWidget.aarp.member.missing.link.text": "I dont have my AARP member #",
+                            "bookingWidget.aarp.member.verifyAccount.cta.label": "Verify your account",
+                            "bookingWidget.aarp.member.verifyStatus.title.label": "Verify your AARP status",
+                            "bookingWidget.awdCode.restricted.message": "This is a restricted Avis Worldwide Discount (AWD) code, which cannot be used on the website.",
+                            "bookingWidget.awdRate.label": "This AWD - {{awdNumber}}",
+                            "bookingWidget.button.search": "Search",
+                            "bookingWidget.car.label": "Cars",
+                            "bookingWidget.currentLocation.search.error.text": "We did not found any locations near you. Please try to search for a specific location or within your city.",
+                            "bookingWidget.date.button.cancel": "Cancel",
+                            "bookingWidget.date.button.cancel.text": "Cancel",
+                            "bookingWidget.date.button.done": "Apply",
+                            "bookingWidget.date.button.done.mobile": "Done",
+                            "bookingWidget.date.error.dropoffNotLaterThanPickup": "Drop-off date cannot be the same as pick-up date.",
+                            "bookingWidget.date.error.dropoffNotLaterThanPickup.mobile": "Drop-off date cannot be the same as pick-up date.",
+                            "bookingWidget.date.error.dropoffTimeNotLaterThanPickup": "The drop-off time must be later than the pickup time",
+                            "bookingWidget.date.error.emptyValue": "Please specify dates for your reservation",
+                            "bookingWidget.date.field.label": "",
+                            "bookingWidget.date.field.label.mobile": "Dates",
+                            "bookingWidget.date.field.placeholder": "Select dates",
+                            "bookingWidget.date.field.placeholder.mobile": "",
+                            "bookingWidget.date.maxdays.validation.text": "bookingWidget.date.maxdays.validation.text",
+                            "bookingWidget.date.maxdays.validation.text_one": "A maximum of {{count}} day rental allowed",
+                            "bookingWidget.date.maxdays.validation.text_other": "A maximum of {{count}} days rental allowed",
+                            "bookingWidget.date.selecteddays.label": "${days} days selected",
+                            "bookingWidget.date.selecteddays.label_one": "{{count}} day selected",
+                            "bookingWidget.date.selecteddays.label_other": "{{count}} days selected",
+                            "bookingWidget.datetime.selection.error.text": "Please update your date/time selection according to working schedule of selected location",
+                            "bookingWidget.datetime.selectionRange.error.text": "The selected date range exceeds the maximum rental duration for this location. Please update your selection.",
+                            "bookingWidget.day.label": "Day",
+                            "bookingWidget.day.placeholder": "Choose day",
+                            "bookingWidget.discount.address.field.placeholder": "Enter your primary street address",
+                            "bookingWidget.discount.applied.message": "Your discount has been applied",
+                            "bookingWidget.discount.code.applied.label": "AWD applied",
+                            "bookingWidget.discount.code.applied.text": "The discount code has been successfully applied.",
+                            "bookingWidget.discount.code.coupons.label_one": "coupon",
+                            "bookingWidget.discount.code.coupons.label_other": "coupons",
+                            "bookingWidget.discount.code.field.label": "Avis Worldwide Discount (AWD) Code",
+                            "bookingWidget.discount.code.field.placeholder": "AWD code",
+                            "bookingWidget.discount.code.header.label": "Apply Discount",
+                            "bookingWidget.discount.code.hint.window.text": "An AWD is a discount code with one letter followed by numbers.",
+                            "bookingWidget.discount.code.invalid": "Your discount code is invalid.",
+                            "bookingWidget.discount.code.learnWhy.cta.label": "Learn why",
+                            "bookingWidget.discount.code.notVerified": "Your coupon can't be used for this reservation.",
+                            "bookingWidget.discount.code.popup.notPresent.description": "\u003Cp\u003EYour coupon number cannot be used for this reservation due to following reason(s):\u003C/p\u003E\u003Cul\u003E\u003Cli\u003EThe coupon entered is invalid.\u003C/li\u003E\u003C/ul\u003E",
+                            "bookingWidget.discount.code.popup.notValid.description": "Your coupon number cannot be used for this reservation due to following reason: The coupon code entered is not valid. Coupon codes are 7 characters, 4 letters followed by 3 numbers",
+                            "bookingWidget.discount.code.popup.notVerified.description": "\u003Cp\u003EYour coupon number cannot be used for this reservation due to following reason(s):\u003C/p\u003E\u003Cul\u003E\u003Cli\u003E\u003Cp\u003E\u003Cstrong\u003EYOUR COUPON MUST BE REDEEMED AT THE COUNTER\u003C/strong\u003E\u003C/p\u003E\u003Cp\u003EThis coupon will not be reflected online. To redeem your reward, please present your paper coupon at the rental counter.\u003C/p\u003E\u003Cp\u003ESome advance reservations are required. If this is noted in the terms and your coupon is associated to an AWD, please enter this AWD with this reservation to ensure you receive proper adjustments at time of pick-up.\u003C/p\u003E\u003Cp\u003E\u003Cem\u003EPlease check your coupon for the full Terms and Conditions. Blackout dates may apply, and we recommend that you contact the rental location to confirm that the coupon may be used for the dates you have reserved.\u003C/em\u003E\u003C/p\u003E\u003C/li\u003E\u003C/ul",
+                            "bookingWidget.discount.code.popup.title": "Coupon Info",
+                            "bookingWidget.discount.code.quantity.hint": "These are the available options that may be redeemed",
+                            "bookingWidget.discount.code.quantity.label": "Quantity",
+                            "bookingWidget.discount.code.valid.label": "Valid AWD Code",
+                            "bookingWidget.discount.code.verificationModal.description": "Corporate Email",
+                            "bookingWidget.discount.code.verificationModal.submit.label": "Submit",
+                            "bookingWidget.discount.corporateEmail.field.invalid.message": "Please enter a valid email address in the correct format to proceed",
+                            "bookingWidget.discount.corporateEmail.field.label": "Corporate Email",
+                            "bookingWidget.discount.corporateEmail.field.not.match": "The email provided does not match our records. Please ensure that the information you have entered is correct and try again.",
+                            "bookingWidget.discount.corporateEmail.field.placeholder": "Enter Email Address",
+                            "bookingWidget.discount.corporateEmail.submit.label": "Submit",
+                            "bookingWidget.discount.coupon.applied.enhanced.text": "Discount Applied",
+                            "bookingWidget.discount.coupon.applied.label": "Coupon applied",
+                            "bookingWidget.discount.coupon.applied.text": "bookingWidget.discount.coupon.applied.text",
+                            "bookingWidget.discount.coupon.applied.text_one": "{{count}} Discount Applied",
+                            "bookingWidget.discount.coupon.applied.text_other": "{{count}} Discounts Applied",
+                            "bookingWidget.discount.coupon.code.field.label": "Coupon Code",
+                            "bookingWidget.discount.coupon.code.field.label.mobile": "Coupon Code",
+                            "bookingWidget.discount.coupon.code.field.placeholder": "Enter coupon code",
+                            "bookingWidget.discount.coupon.code.hint.window.text": "A coupon code is a discount code with four letters followed by numbers.",
+                            "bookingWidget.discount.coupon.code.hint.window.text.mobile": "Select the Coupon code",
+                            "bookingWidget.discount.coupon.field.label": "Add Discount",
+                            "bookingWidget.discount.coupon.field.label.mobile": "Add Coupon",
+                            "bookingWidget.discount.coupon.valid.label": "Valid Coupon Code",
+                            "bookingWidget.discount.error.missingwizardnumber": "This {{codeType}} requires a Wizard number to receive the discount. Please {add your Wizard Number} or {Login} to get this discount",
+                            "bookingWidget.discount.error.unrecognized": "{{discountType}} not recognized. Please try a different number",
+                            "bookingWidget.discount.get.aarp.partner.link.text": "Get AARP Partner Discount",
+                            "bookingWidget.discount.get.aarp.partner.link.text.mobile": "Get AARP Partner Discount",
+                            "bookingWidget.discount.memberNumber.field.invalid.message": "Please enter valid membership number",
+                            "bookingWidget.discount.memberNumber.field.label": "Member number",
+                            "bookingWidget.discount.memberNumber.field.placeholder": "Enter member number",
+                            "bookingWidget.discount.memberNumber.iDontHave": "I don't have my membership #",
+                            "bookingWidget.discount.memberNumber.submit.label": "Submit",
+                            "bookingWidget.discount.memberNumber.valid.label": "Valid Member Number",
+                            "bookingWidget.discount.newcode.label": "Enter new code",
+                            "bookingWidget.discount.partnerBenefit.label": "{{Partner}} benefit",
+                            "bookingWidget.discount.partnerDiscountApplied.label": "Your {{PartnerName}} member discount has been applied",
+                            "bookingWidget.discount.purposeOfTravel.both.text": "Both",
+                            "bookingWidget.discount.purposeOfTravel.business.text": "Business",
+                            "bookingWidget.discount.purposeOfTravel.field.label": "Purpose of travel",
+                            "bookingWidget.discount.purposeOfTravel.field.placeholder": "Select one",
+                            "bookingWidget.discount.purposeOfTravel.leisure.text": "Leisure",
+                            "bookingWidget.dob.hint.text": "If you are under 25, we need your date of birth in order to show you the most appropriate selection of vehicles.",
+                            "bookingWidget.dob.submit.label": "Submit",
+                            "bookingWidget.dob.text": "Please enter your date of birth to proceed",
+                            "bookingWidget.drivers.age.label": "Driver's Age",
+                            "bookingWidget.drivers.age.list.placeholder": "Choose age",
+                            "bookingWidget.dropoff.different.label": "Return to different location",
+                            "bookingWidget.dropoff.different.label.mobile": "Different drop-off location",
+                            "bookingWidget.dropoff.error.emptyValue": "Please specify drop off location",
+                            "bookingWidget.dropoff.error.emptyValue.mobile": "Please enter a Drop-off Location",
+                            "bookingWidget.dropoff.error.incorrectValue": "Please revise your search",
+                            "bookingWidget.dropoff.error.incorrectValue.mobile": "Please revise your search",
+                            "bookingWidget.dropoff.field.datetime": "Drop-off date & time",
+                            "bookingWidget.dropoff.field.label": "Drop-off location",
+                            "bookingWidget.dropoff.field.label.mobile": "Drop-off location",
+                            "bookingWidget.dropoff.field.placeholder": "Select drop-off location",
+                            "bookingWidget.dropoff.field.placeholder.mobile": "Drop-off location",
+                            "bookingWidget.dropoff.helper.text": "Searching...",
+                            "bookingWidget.dropoff.helper.text.mobile": "Searching...",
+                            "bookingWidget.features.label": "Features",
+                            "bookingWidget.fields.ageRestriction.label": "You must be at least {{Age}} years old to rent a car",
+                            "bookingWidget.fields.driverAge.label": "Driver's Age",
+                            "bookingWidget.fields.driverDoB.label": "Driver date of birth",
+                            "bookingWidget.fields.residency.label": "Residency",
+                            "bookingWidget.header.search.label": "LET`S GET YOU MOVING",
+                            "bookingWidget.location.airports.label": "Airports",
+                            "bookingWidget.location.backToResult.text": "Back to all results",
+                            "bookingWidget.location.cities.label": "Cities",
+                            "bookingWidget.location.current.error.message": "Geolocation is disabled. Turn it on in the browser settings",
+                            "bookingWidget.location.current.label": "Use current location",
+                            "bookingWidget.location.downtown.label": "Downtown locations",
+                            "bookingWidget.location.dropoff.different.label": "Different drop off location",
+                            "bookingWidget.location.found.airport.label": "bookingWidget.location.found.airport.label",
+                            "bookingWidget.location.found.airport.label_one": "{{AirportAmount}} Airport, {{LocationsAmount}} Location",
+                            "bookingWidget.location.found.airport.label_other": "{{AirportAmount}} Airports, {{LocationsAmount}} Locations",
+                            "bookingWidget.location.my.label": "My Locations",
+                            "bookingWidget.location.pointsOfInterest.label": "Points of Interest",
+                            "bookingWidget.location.recent.label": "Recent",
+                            "bookingWidget.location.search.error.message": "There are no locations for this city. Please enter a new search or click here to browse for a location.",
+                            "bookingWidget.location.showAll.airports.label": "Show all Airports({{amount}})",
+                            "bookingWidget.location.showAll.cities.label": "Show all Cities({{amount}})",
+                            "bookingWidget.location.showAll.downtown.label": "Show all Downtown Locations({{amount}})",
+                            "bookingWidget.location.showAll.pointsOfInterest.label": "Show all Points of Interest({{amount}})",
+                            "bookingWidget.location.showAll.train.label": "Show all Train Stations({{amount}})",
+                            "bookingWidget.location.showAll.truck.label": "Show all Truck Locations({{amount}})",
+                            "bookingWidget.location.showingAll.airports.label": "Showing all Airports {{SearchInput}}",
+                            "bookingWidget.location.showingAll.cities.label": "Showing all Cities in {{SearchInput}}",
+                            "bookingWidget.location.showingAll.downtown.label": "Showing all Downtown Locations {{SearchInput}}",
+                            "bookingWidget.location.showingAll.pointsOfInterest.label": "Showing all Points of Interest {{SearchInput}}",
+                            "bookingWidget.location.showingAll.train.label": "Showing all Train Stations {{SearchInput}}",
+                            "bookingWidget.location.showingAll.truck.label": "Showing all Truck Locations {{SearchInput}}",
+                            "bookingWidget.location.train.label": "Train Station",
+                            "bookingWidget.location.truck.label": "Truck Location",
+                            "bookingWidget.mileageLimitDropdown.mileagePerMonthIncluded.label": "Mileage per month included",
+                            "bookingWidget.mileageLimitDropdown.milesPerMonth.placeholder": "{{milesNumber}} miles per month",
+                            "bookingWidget.mileageLimitDropdown.milesPerMonthIncluded.placeholder": "{{milesNumber}} miles per month included",
+                            "bookingWidget.month.label": "Month",
+                            "bookingWidget.month.placeholder": "Choose month",
+                            "bookingWidget.neighborhood.label": "Neighborhood",
+                            "bookingWidget.neighborhood.showAll.label": "Show all Neighborhood Rental Locations({{amount}})",
+                            "bookingWidget.neighborhood.showingAll.label": "Showing all Neighborhood Rental Locations in “{{SearchInput}}”",
+                            "bookingWidget.pickup.error.emptyValue": "Please specify pick-up location",
+                            "bookingWidget.pickup.error.emptyValue.mobile": "Please enter a Pick-up Location",
+                            "bookingWidget.pickup.error.incorrectValue": "Please revise your search or click here to browse for a location",
+                            "bookingWidget.pickup.error.incorrectValue.mobile": "Please revise your search or click here to browse for a location",
+                            "bookingWidget.pickup.field.datetime": "Pick-up date & time",
+                            "bookingWidget.pickup.field.label": "Pick-up location",
+                            "bookingWidget.pickup.field.label.mobile": "Pick-up location",
+                            "bookingWidget.pickup.field.label_one": "Location",
+                            "bookingWidget.pickup.field.label_other": "Locations",
+                            "bookingWidget.pickup.field.label_zero": "Zero",
+                            "bookingWidget.pickup.field.placeholder": "Enter pick-up location or zip code",
+                            "bookingWidget.pickup.field.placeholder.avisFirst.localMarket": "Enter pick-up location or delivery address",
+                            "bookingWidget.pickup.field.placeholder.mobile": "Pick-up location",
+                            "bookingWidget.pickup.helper.text": "Searching ..",
+                            "bookingWidget.pickup.helper.text.mobile": "Searching ..",
+                            "bookingWidget.proofOfEmployment.modal.button.eligible.text": "Yes, I Am Eligible",
+                            "bookingWidget.proofOfEmployment.modal.button.remove.text": "Remove This AWD From My Search",
+                            "bookingWidget.proofOfEmployment.modal.description": "You have entered an Avis Worldwide Discount (AWD) number associated with a corporate or contracted agreement with Avis. Please note you will be required to provide proof of eligibility to use this AWD number when pick up the vehicle, otherwise your reservation will be cancelled.",
+                            "bookingWidget.proofOfEmployment.modal.title": "Avis Worldwide Discount",
+                            "bookingWidget.rate.code.applied.text": "Rate applied",
+                            "bookingWidget.rate.code.field.label": "Rate Code",
+                            "bookingWidget.rate.code.field.placeholder": "Enter rate code",
+                            "bookingWidget.rate.code.hint.text": "If you have been given a special rate code please enter it here",
+                            "bookingWidget.rate.code.valid.text": "Valid Rate Code",
+                            "bookingWidget.relatedTrip.typeSelector.label": "I am booking this trip for:",
+                            "bookingWidget.relatedTrip.typeSelector.modify.label": "You are modifying this trip as:",
+                            "bookingWidget.search.residency.label": "Search residency",
+                            "bookingWidget.securityCodeFromEmail.codeField.error": "Security code does not match. Please ensure that the security code you have entered is correct and try again.",
+                            "bookingWidget.securityCodeFromEmail.codeField.placeholder": "Enter security code here",
+                            "bookingWidget.securityCodeFromEmail.text": "For added security, please enter the verification code that has been sent to your email address beginning with {{coveredEmail}}",
+                            "bookingWidget.select.dropoff.cta.label": "Select as pick-up",
+                            "bookingWidget.select.pickup.cta.label": "Select as pick-up",
+                            "bookingWidget.show.vehicle.label": "Show Vehicles",
+                            "bookingWidget.start.text": "Start booking",
+                            "bookingWidget.time.dropoff.available.label": "24 hours drop off available",
+                            "bookingWidget.time.dropoff.field.label": "Drop-off time",
+                            "bookingWidget.time.dropoff.field.label.mobile": "Drop-off time",
+                            "bookingWidget.time.dropoff.field.openhours.description": "Open Hours: {{time}}",
+                            "bookingWidget.time.pickup.field.label": "Pick-up time",
+                            "bookingWidget.time.pickup.field.openhours.description": "Open Hours: {{time}}",
+                            "bookingWidget.truck.label": "Trucks",
+                            "bookingWidget.uniquodo.error.message": "This code cannot be used now, please try again later.",
+                            "bookingWidget.wesalute.authentication.text": "Please authenticate with WeSalute by clicking the 'WeSalute' button",
+                            "bookingWidget.year.label": "Year",
+                            "bookingWidget.year.placeholder": "Choose year",
+                            "global.button.apply.label": "Apply",
+                            "global.button.close.label": "Close",
+                            "global.default.label": "Default",
+                            "global.error.somethingWrong.text": "Something went wrong.",
+                            "global.field.cityProvince.label": "City/Province",
+                            "global.field.cityProvince.placeholder": "Enter your city",
+                            "global.field.days.label_one": "{{count}} day",
+                            "global.field.days.label_other": "{{count}} days",
+                            "global.field.emailAddress.placeholder": "Enter your email address",
+                            "global.field.firstName.label": "First Name",
+                            "global.field.firstName.placeholder": "Enter your first name",
+                            "global.field.lastName.label": "Last Name",
+                            "global.field.lastName.placeholder": "Enter your last name",
+                            "global.field.state.label": "State",
+                            "global.field.state.placeholder": "Select your state",
+                            "global.field.validation.fieldRequired.message": "Please fill-in {{field}}.",
+                            "global.field.validation.invalidLength.message": "{{field}} must be between {{minLength}} and {{maxLength}} characters.",
+                            "global.field.zipPostalCode.label": "Zip/Postal Code",
+                            "global.field.zipPostalCode.placeholder": "Enter Zip/Postal code",
+                            "global.lowestPrice.label": "Lowest Price",
+                            "global.viewPrice.label": "View Price",
+                            "locationMap.address.label": "Address",
+                            "locationMap.ctaLabel.locationDetails.label": "Location details",
+                            "locationMap.hoursModal.holidayHours.label": "Holiday hours",
+                            "locationMap.hoursOfOperation.label": "Hours of operation",
+                            "locationMap.icon.hourDrop.label": "24 hour drop off",
+                            "locationMap.icon.keyDrop.label": "Keydrop Location",
+                            "locationMap.phone.label": "Phone",
+                            "locationMap.selfService.kiosk.label": "Self-service kiosk",
+                            "locationSearch.airports.inputValue.amount.label": "Showing all Airports in {{inputValue}} ({{amount}})",
+                            "locationSearch.airports.label": "Airports",
+                            "locationSearch.cities.inputValue.amount.label": "Showing all Cities in {{inputValue}} ({{amount}})",
+                            "locationSearch.interestPoints.inputValue.amount.label": "Showing all Points of Interest in {{inputValue}} ({{amount}})",
+                            "locationSearch.myLocations.label": "My Locations",
+                            "locationSearch.neighborhood.inputValue.amount.label": "Showing all Neighborhood Rental Locations in {{inputValue}} ({{amount}})",
+                            "locationSearch.neighborhood.locations.amount.label": "Show all Neighborhood Rental Locations({{amount}})",
+                            "locationSearch.neighborhood.locations.label": "Neighborhood Rental Locations",
+                            "locationSearch.pointsOfInterest.label": "Points of Interest",
+                            "locationSearch.recent.label": "Recent",
+                            "locationSearch.show.interestPoints.amount.label": "Show all Points of Interest ({{amount}})",
+                            "locationSearch.show.recents.amount.label": "Show all Recent({{amount}})",
+                            "locationSearch.showAllAirports.label": "Show all Airports({{amount}})",
+                            "locationSearch.showAllCities.label": "Show all Cities({{amount}})",
+                            "mfa.modal.screen.enterCode.codeField.title": "Security Code",
+                            "mfa.modal.screen.enterCode.title": "Enter security code"
+                          },
+                          "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:header:master:jcr_content:root:container:header:bookingwidget",
+                          "dataLayer": {
+                            "bookingwidget-500dc44b75": {
+                              "@type": "avis/components/content/bookingwidget",
+                              "repo:modifyDate": "2025-08-27T20:24:02Z"
+                            }
+                          },
+                          ":type": "avis/components/content/bookingwidget"
+                        },
+                        "loginmodal": {
+                          "id": "login-modal",
+                          "i18n": {
+                            "amazonSettings.errorMessage.alreadyLinked.label": "Your Avis account is already linked with another Amazon account.",
+                            "amazonSettings.errorMessage.linkingFailed.label": "We are unable to process your request at this time. Please try again later.",
+                            "amazonSettings.errorMessage.notAvailable.label": "We're Sorry. Your account cannot be linked as Amazon Benefits are not available in your country.",
+                            "amazonSettings.linkedSuccessfully.description.label": "You have successfully linked your Avis Preferred and Amazon accounts. Book now to receive your exclusive Amazon benefits.",
+                            "amazonSettings.linkedSuccessfully.title.label": "Amazon benefits",
+                            "global.button.close.label": "Close",
+                            "global.button.continue.label": "Continue",
+                            "global.field.validation.emailInvalid.message": "Please enter a valid email.",
+                            "global.field.validation.fieldRequired.message": "Please fill-in {{field}}.",
+                            "global.field.validation.invalidLength.message": "{{field}} must be between {{minLength}} and {{maxLength}} characters.",
+                            "global.field.validation.onlyNumbers.message": "{{field}} can contain numbers only.",
+                            "global.noIAmNot.label": "No I'm not",
+                            "global.or.label": "or",
+                            "global.resend.label": "Resend",
+                            "global.thankYou.label": "Thank You",
+                            "global.thanksForLettingUsKnow.label": "Great. Thanks For Letting Us Know",
+                            "global.yesIAm.label": "Yes I am",
+                            "loginModal.addNewDiscountCode.text": "You can always \u003Cspan\u003Eadd new discounts code\u003C/span\u003E if you have one.",
+                            "loginModal.amazonCta.label": "Amazon",
+                            "loginModal.confirmEmployment.text": "By selecting yes, I confirm that I still work for this company and I am subject to the terms and conditions associated with my employer.",
+                            "loginModal.errorMessage.accountDisabled.label": "Account was disabled",
+                            "loginModal.errorMessage.amazonFailed.label": "Login with Amazon failed",
+                            "loginModal.errorMessage.header.label": "Error logging in",
+                            "loginModal.errorMessage.reCaptchaFailed.label": "reCAPTCHA validation failed",
+                            "loginModal.errorMessage.reCaptchaLevelUncertain.label": "reCAPTCHA confidence level uncertain",
+                            "loginModal.errorMessage.reCaptchaWrongPattern.label": "Invalid reCAPTCHA pattern",
+                            "loginModal.errorMessage.systemError.label": "The system can’t proceed with a login due to system error",
+                            "loginModal.errorMessage.wrongCredentials.label": "Wrong credentials",
+                            "loginModal.orLoginWith.label": "Or login with",
+                            "loginModal.recaptcha.label": "This site is protected by reCAPTCHA Enterprise and the Google \u003Ca href=\"https://policies.google.com/privacy\" target=\"_blank\" rel=\"noopener noreferrer\"\u003EPrivacy Policy\u003C/a\u003E and \u003Ca href=\"https://policies.google.com/terms\" target=\"_blank\" rel=\"noopener noreferrer\"\u003ETerms of Service\u003C/a\u003E apply.",
+                            "loginModal.rememberMe.label": "Remember me",
+                            "loginModal.rentalEmploymentCheckAlert.text": "You may be subject to further employment verification at the time of rental.",
+                            "loginModal.stayInCompliance.label": "Stay in Compliance With Your Company Policy",
+                            "loginModal.verifyEmployment.text": "Are you still working for or associated with {{companyName}}?",
+                            "mfa.modal.authentication.option.email.title": "Receive by email",
+                            "mfa.modal.authentication.option.text.title": "Receive by text",
+                            "mfa.modal.authentication.options.title": "How would you like to authenticate?",
+                            "mfa.modal.cta.getCode.title": "Get verification code",
+                            "mfa.modal.errorMessage.accountBlocked.label": "Your account is locked after exceeding maximum attempts to validate your OTP. Please unlock your account by clicking the link in the account lockout email sent to your registered email ID.",
+                            "mfa.modal.errorMessage.expiredCode.label": "The code has expired. Please request a new code and try again.",
+                            "mfa.modal.errorMessage.header.label": "Error authenticating",
+                            "mfa.modal.errorMessage.invalidCode.label": "The code you entered is not valid. Please try again.",
+                            "mfa.modal.errorMessage.maximumCodeSends.label": "You've reached the maximum amount of code sends. Please try again later or contact customer service.",
+                            "mfa.modal.errorMessage.systemError.label": "We are unable to process your request at this time. Please try again later.",
+                            "mfa.modal.screen.didNotReceiveCode.label": "Didn't receive a code?",
+                            "mfa.modal.screen.enterCode.codeField.placeholder": "Enter Security Code",
+                            "mfa.modal.screen.enterCode.codeField.title": "Security Code",
+                            "mfa.modal.screen.enterCode.email.description": "Enter the verification code sent to {{email}}",
+                            "mfa.modal.screen.enterCode.otherOptions.title": "Other options",
+                            "mfa.modal.screen.enterCode.phoneNumber.description": "Enter the verification code sent to {{phoneNumber}}",
+                            "mfa.modal.screen.enterCode.title": "Enter security code",
+                            "mfa.modal.screen.selectMethod.description": "For added security, we will send you a verification code to verify your identity.",
+                            "mfa.modal.screen.selectMethod.title": "Two Factor Authentication"
+                          },
+                          "modalTitle": "Login",
+                          "memberBenefitsBannerText": "Get our best rates when you log in",
+                          "userIdFieldTitle": "Username/Wizard Number",
+                          "userIdFieldPlaceholder": "Enter your Username/Wizard Number",
+                          "passwordFieldTitle": "Password",
+                          "passwordFieldPlaceholder": "Enter your password",
+                          "rememberMeEnabled": true,
+                          "forgotUsernameOrPasswordText": "Forgot username or password",
+                          "forgotUsernameOrPasswordLink": "/en/avis-preferred/forgot-password",
+                          "forgotUsernameOrPasswordTarget": "_self",
+                          "additionalForgotPasswordEnabled": false,
+                          "additionalForgotPasswordTarget": "_self",
+                          "loginCtaText": "Log in",
+                          "createAccountText": "Create account",
+                          "createAccountLink": "/en/loyalty-profile/member-rates-enrollment",
+                          "createAccountTarget": "_self",
+                          "reCaptchaEnabled": false,
+                          "socialLinks": [
+                            "amazon"
+                          ],
+                          "showInFormView": false,
+                          "showSimplifiedDriveForm": false,
+                          "availableMfaMethods": [
+                            "email",
+                            "phone"
+                          ],
+                          "amazonLandingPageUrl": "/offers/partners/amazon-benefits",
+                          "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:header:master:jcr_content:root:container:header:loginmodal",
+                          "dataLayer": {
+                            "login-modal": {
+                              "@type": "avis/components/content/loginModal",
+                              "repo:modifyDate": "2026-01-16T06:01:24Z"
+                            }
+                          },
+                          ":type": "avis/components/content/loginModal"
+                        }
+                      },
+                      ":type": "avis/components/content/header",
+                      "dataLayer": {
+                        "header-b1b54561fd": {
+                          "@type": "avis/components/content/header"
+                        }
+                      }
+                    }
+                  },
+                  ":type": "avis/components/structure/container",
+                  "dataLayer": {
+                    "container-82ef8c448a": {
+                      "@type": "avis/components/structure/container",
+                      "repo:modifyDate": "2025-08-18T21:10:54Z"
+                    }
+                  }
+                }
+              },
+              ":type": "avis/components/structure/container",
+              "dataLayer": {
+                "container-446317cc50": {
+                  "@type": "avis/components/structure/container"
+                }
+              }
+            }
+          },
+          ":type": "avis/components/structure/experiencefragment",
+          "dataLayer": {
+            "experiencefragment-1376c34e41": {
+              "@type": "avis/components/structure/experiencefragment"
+            }
+          }
+        },
+        "container": {
+          "id": "container-df6a6c00e8",
+          "children": [
+            {
+              "name": "herobanner",
+              "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/herobanner"
+            },
+            {
+              "name": "breadcrumbs",
+              "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/breadcrumbs"
+            },
+            {
+              "name": "contentmodule",
+              "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentmodule"
+            },
+            {
+              "name": "contentcard",
+              "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentcard"
+            }
+          ],
+          "personalizationLocation": "content:avis:nam:countries:us:en_us:products-and-services:protections:jcr_content:root:container",
+          ":itemsOrder": [
+            "herobanner",
+            "breadcrumbs",
+            "contentmodule",
+            "contentcard"
+          ],
+          ":items": {
+            "herobanner": {
+              "id": "herobanner-d58c33c574",
+              "showPersonalization": false,
+              "children": [],
+              "heroHeadline": "Protections & Coverages",
+              "i18n": {
+                "amazonSettings.errorMessage.alreadyLinked.label": "Your Avis account is already linked with another Amazon account.",
+                "amazonSettings.errorMessage.linkingFailed.label": "We are unable to process your request at this time. Please try again later.",
+                "amazonSettings.errorMessage.notAvailable.label": "We're Sorry. Your account cannot be linked as Amazon Benefits are not available in your country.",
+                "division.modal.headline": "Select your division",
+                "loginModal.errorMessage.accountDisabled.label": "Account was disabled",
+                "loginModal.errorMessage.amazonFailed.label": "Login with Amazon failed",
+                "loginModal.errorMessage.header.label": "Error logging in",
+                "loginModal.errorMessage.reCaptchaFailed.label": "reCAPTCHA validation failed",
+                "loginModal.errorMessage.reCaptchaLevelUncertain.label": "reCAPTCHA confidence level uncertain",
+                "loginModal.errorMessage.reCaptchaWrongPattern.label": "Invalid reCAPTCHA pattern",
+                "loginModal.errorMessage.systemError.label": "The system can’t proceed with a login due to system error",
+                "loginModal.errorMessage.wrongCredentials.label": "Wrong credentials",
+                "loginModal.orLoginWith.label": "Or login with",
+                "profileManagement.amazonSection.loginCta.title": "Log in with Amazon"
+              },
+              "enableCta": false,
+              "showCountryDropdown": false,
+              "enableLogin": false,
+              "loginType": "amazon",
+              "personalizationLocation": "content:avis:nam:countries:us:en_us:products-and-services:protections:jcr_content:root:container:herobanner",
+              ":itemsOrder": [],
+              ":items": {
+
+              },
+              "heroHeadline-heading": "",
+              ":type": "avis/components/content/herobanner",
+              "dataLayer": {
+                "herobanner-d58c33c574": {
+                  "@type": "avis/components/content/herobanner",
+                  "repo:modifyDate": "2025-08-01T18:48:41Z"
+                }
+              }
+            },
+            "breadcrumbs": {
+              "id": "breadcrumbs-920765a470",
+              "breadcrumbList": [
+                {
+                  "link": "/en/home",
+                  "title": "Home",
+                  "mobileTitle": "Home"
+                },
+                {
+                  "link": "/en/products-and-services",
+                  "title": "Products & Services",
+                  "mobileTitle": "Products & Services"
+                },
+                {
+                  "link": "/en/products-and-services/protections",
+                  "title": "Protections & Coverages",
+                  "mobileTitle": "Protections & Coverages"
+                }
+              ],
+              "personalizationLocation": "content:avis:nam:countries:us:en_us:products-and-services:protections:jcr_content:root:container:breadcrumbs",
+              "dataLayer": {
+                "breadcrumbs-920765a470": {
+                  "@type": "avis/components/content/breadcrumbs"
+                }
+              },
+              ":type": "avis/components/content/breadcrumbs"
+            },
+            "contentmodule": {
+              "cq:isCancelledForChildren": true,
+              ":type": "wcm/msm/components/ghost"
+            },
+            "contentcard": {
+              "id": "contentcard-df89700a54",
+              "children": [
+                {
+                  "name": "contentcardelement",
+                  "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentcard/contentcardelement"
+                },
+                {
+                  "name": "contentcardelement_1650493166",
+                  "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentcard/contentcardelement_1650493166"
+                },
+                {
+                  "name": "contentcardelement_807829329",
+                  "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentcard/contentcardelement_807829329"
+                },
+                {
+                  "name": "contentcardelement_1148954109",
+                  "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentcard/contentcardelement_1148954109"
+                },
+                {
+                  "name": "contentcardelement_2090779342",
+                  "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentcard/contentcardelement_2090779342"
+                },
+                {
+                  "name": "contentcardelement_1453215924",
+                  "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentcard/contentcardelement_1453215924"
+                },
+                {
+                  "name": "contentcardelement_1",
+                  "path": "/content/avis/nam/countries/us/en_us/products-and-services/protections/jcr:content/root/container/contentcard/contentcardelement_1"
+                }
+              ],
+              "cardSelector": "inline",
+              "cardsPerRow": "3",
+              "ctaTarget": "_self",
+              "ctaType": "button",
+              "ctaStyle": "primary",
+              "showDivider": false,
+              "personalizationLocation": "content:avis:nam:countries:us:en_us:products-and-services:protections:jcr_content:root:container:contentcard",
+              ":itemsOrder": [
+                "contentcardelement",
+                "contentcardelement_1650493166",
+                "contentcardelement_807829329",
+                "contentcardelement_1148954109",
+                "contentcardelement_2090779342",
+                "contentcardelement_1453215924",
+                "contentcardelement_1"
+              ],
+              ":items": {
+                "contentcardelement": {
+                  "id": "contentcardelement-800d272757",
+                  "headline": "Extended Roadside Assistance",
+                  "bodyContent": "\u003Cp\u003EFor the ultimate safe driving experience, add Extended Roadside Assistance to your Avis reservation. Extended Roadside Assistance from Avis will provide you with fast, reliable emergency road hazard assistance.\u003C/p\u003E",
+                  "ctaTitle": "Learn More",
+                  "ctaLink": "/en/products-and-services/protections/extended-roadside-assistance",
+                  "dataLayer": {
+                    "contentcardelement-800d272757": {
+                      "@type": "avis/components/content/contentcardelement",
+                      "repo:modifyDate": "2025-08-04T20:03:05Z"
+                    }
+                  },
+                  ":type": "avis/components/content/contentcardelement"
+                },
+                "contentcardelement_1650493166": {
+                  "id": "contentcardelement-b3ffdbca3f",
+                  "headline": "Loss Damage Waiver (LDW)",
+                  "bodyContent": "\u003Cp class=\"MsoNormal\"\u003EWe’ll take care of the vehicle - and your wallet. This protection covers damage or theft with no deductible, no insurance claims, and no added stress.\u003C/p\u003E",
+                  "ctaTitle": "Learn More",
+                  "ctaLink": "/en/products-and-services/protections/loss-damage-waiver",
+                  "dataLayer": {
+                    "contentcardelement-b3ffdbca3f": {
+                      "@type": "avis/components/content/contentcardelement",
+                      "repo:modifyDate": "2025-11-07T20:26:37Z"
+                    }
+                  },
+                  ":type": "avis/components/content/contentcardelement"
+                },
+                "contentcardelement_807829329": {
+                  "id": "contentcardelement-216cb46ba1",
+                  "headline": "Personal Accident Insurance (PAI)",
+                  "bodyContent": "\u003Cp class=\"MsoNormal\"\u003EAccidents happen - make sure you're covered. PAI helps pay for medical expenses for you and your passengers, even when personal insurance or credit card coverage falls short.\u003C/p\u003E",
+                  "ctaTitle": "Learn More",
+                  "ctaLink": "/en/products-and-services/protections/personal-accident",
+                  "dataLayer": {
+                    "contentcardelement-216cb46ba1": {
+                      "@type": "avis/components/content/contentcardelement",
+                      "repo:modifyDate": "2025-11-07T20:27:31Z"
+                    }
+                  },
+                  ":type": "avis/components/content/contentcardelement"
+                },
+                "contentcardelement_1148954109": {
+                  "id": "contentcardelement-83f14005b3",
+                  "headline": "Additional Liability Insurance (ALI)",
+                  "bodyContent": "\u003Cp class=\"MsoNormal\"\u003EIf someone is hurt or their property is damaged in an accident, ALI helps cover medical, legal, or repair costs - up to $500,000. It’s extra peace of mind beyond what most insurance policies offer.\u003C/p\u003E",
+                  "ctaTitle": "Learn More",
+                  "ctaLink": "/en/products-and-services/protections/additional-liability-insurance",
+                  "dataLayer": {
+                    "contentcardelement-83f14005b3": {
+                      "@type": "avis/components/content/contentcardelement",
+                      "repo:modifyDate": "2025-11-07T20:25:15Z"
+                    }
+                  },
+                  ":type": "avis/components/content/contentcardelement"
+                },
+                "contentcardelement_2090779342": {
+                  "id": "contentcardelement-e25c08aa4e",
+                  "headline": "Emergency Sickness Plan (ESP)",
+                  "bodyContent": "\u003Cp\u003EESP provides international renters visiting the U.S. with coverage for medical expenses resulting from sickness.\u003C/p\u003E",
+                  "ctaTitle": "Learn More",
+                  "ctaLink": "/en/products-and-services/protections/emergency-sickness",
+                  "dataLayer": {
+                    "contentcardelement-e25c08aa4e": {
+                      "@type": "avis/components/content/contentcardelement",
+                      "repo:modifyDate": "2025-08-04T20:03:18Z"
+                    }
+                  },
+                  ":type": "avis/components/content/contentcardelement"
+                },
+                "contentcardelement_1453215924": {
+                  "id": "contentcardelement-ba54540dac",
+                  "headline": "Personal Effects Insurance (PEP)",
+                  "bodyContent": "\u003Cp class=\"MsoNormal\"\u003EYour trip, your things - all protected. Covers theft or damage to your valuables, from electronics to luggage, throughout your rental period. Not typically included with credit card protections.\u003C/p\u003E",
+                  "ctaTitle": "Learn More",
+                  "ctaLink": "/en/products-and-services/protections/personal-effects-insurance",
+                  "dataLayer": {
+                    "contentcardelement-ba54540dac": {
+                      "@type": "avis/components/content/contentcardelement",
+                      "repo:modifyDate": "2025-11-07T20:28:19Z"
+                    }
+                  },
+                  ":type": "avis/components/content/contentcardelement"
+                },
+                "contentcardelement_1": {
+                  "id": "contentcardelement-434ae4d849",
+                  "headline": "\u003Cp\u003EThird-Party Liability (TPL)\u003C/p\u003E",
+                  "bodyContent": "\u003Cp\u003EProtection Option for Non-US Resident Inbound Travelers are provided Third Party Liability Protection (“TPL”) up to a combined single limit of $300,000.\u003C/p\u003E",
+                  "ctaTitle": "Learn More",
+                  "ctaLink": "/en/products-and-services/protections/third-party-liability",
+                  "dataLayer": {
+                    "contentcardelement-434ae4d849": {
+                      "@type": "avis/components/content/contentcardelement",
+                      "repo:modifyDate": "2025-11-11T18:39:54Z"
+                    }
+                  },
+                  ":type": "avis/components/content/contentcardelement"
+                }
+              },
+              ":type": "avis/components/content/contentcard",
+              "dataLayer": {
+                "contentcard-df89700a54": {
+                  "@type": "avis/components/content/contentcard",
+                  "repo:modifyDate": "2025-06-06T21:22:00Z"
+                }
+              }
+            }
+          },
+          ":type": "avis/components/structure/container",
+          "dataLayer": {
+            "container-df6a6c00e8": {
+              "@type": "avis/components/structure/container"
+            }
+          }
+        },
+        "experiencefragment-footer": {
+          "id": "experiencefragment-8404c259ed",
+          "name": "footer",
+          "cssClassNames": "aem-xf",
+          "configured": true,
+          "localizedFragmentVariationPath": "/content/experience-fragments/avis/nam/countries/us/en_us/site/footer/master/jcr:content",
+          ":itemsOrder": [
+            "root"
+          ],
+          ":items": {
+            "root": {
+              "id": "container-10f095741f",
+              "children": [
+                {
+                  "name": "container",
+                  "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/footer/master/jcr:content/root/container"
+                }
+              ],
+              "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:footer:master:jcr_content:root",
+              ":itemsOrder": [
+                "container"
+              ],
+              ":items": {
+                "container": {
+                  "id": "container-0f92f11973",
+                  "centerTheColumns": false,
+                  "desktopSize": "auto",
+                  "mobileSize": "column-12",
+                  "children": [
+                    {
+                      "name": "footer",
+                      "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/footer/master/jcr:content/root/container/footer"
+                    }
+                  ],
+                  "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:footer:master:jcr_content:root:container",
+                  ":itemsOrder": [
+                    "footer"
+                  ],
+                  ":items": {
+                    "footer": {
+                      "id": "footer-f8e9a0f3e8",
+                      "children": [
+                        {
+                          "name": "footernavigation",
+                          "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/footer/master/jcr:content/root/container/footer/footernavigation"
+                        },
+                        {
+                          "name": "multicolumnlinks",
+                          "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/footer/master/jcr:content/root/container/footer/multicolumnlinks"
+                        },
+                        {
+                          "name": "footerlegal",
+                          "path": "/content/experience-fragments/avis/nam/countries/us/en_us/site/footer/master/jcr:content/root/container/footer/footerlegal"
+                        }
+                      ],
+                      "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:footer:master:jcr_content:root:container:footer",
+                      ":itemsOrder": [
+                        "footernavigation",
+                        "multicolumnlinks",
+                        "footerlegal"
+                      ],
+                      ":items": {
+                        "footernavigation": {
+                          "id": "footerNavigation-3f95e4c2f7",
+                          "logo": {
+                            "source": "https://images.avis.com/is/content/abggwebprod/Logo-1",
+                            "description": "Logo.svg",
+                            "crops": []
+                          },
+                          "navigationList": [
+                            {
+                              "title": "Vehicles",
+                              "target": "_self",
+                              "url": "/",
+                              "subLinks": [
+                                {
+                                  "title": "All vehicle types",
+                                  "target": "_self",
+                                  "url": "/en/cars/vehicles/us",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "SUV",
+                                  "target": "_self",
+                                  "url": "/en/cars/suv-rental",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Minivan",
+                                  "target": "_self",
+                                  "url": "/en/cars/van-rental",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Compact",
+                                  "target": "_self",
+                                  "url": "/en/cars/vehicles/us/b",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Hybrid",
+                                  "target": "_self",
+                                  "url": "/en/cars/vehicles/us/xc",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Electric",
+                                  "target": "_self",
+                                  "url": "/en/cars/electric-car-rentals",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Luxury",
+                                  "target": "_self",
+                                  "url": "/en/cars/luxury-car-rental",
+                                  "linkType": "regular"
+                                }
+                              ]
+                            },
+                            {
+                              "title": "Products & Services",
+                              "url": null,
+                              "subLinks": [
+                                {
+                                  "title": "All Products & Services",
+                                  "target": "_self",
+                                  "url": "/en/products-and-services",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Protections & Coverages",
+                                  "target": "_self",
+                                  "url": "/en/products-and-services/protections",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Rental Add-Ons",
+                                  "target": "_self",
+                                  "url": "/en/products-and-services/products",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Long-Term Car Rental",
+                                  "target": "_self",
+                                  "url": "/en/products-and-services/services/long-term-car-rental",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "One-Way Car Rentals",
+                                  "target": "_self",
+                                  "url": "/en/products-and-services/services/one-way-car-rental",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Extended Roadside Assistance",
+                                  "target": "_self",
+                                  "url": "/en/products-and-services/protections/extended-roadside-assistance",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Meetings & Groups Car Rentals",
+                                  "target": "_self",
+                                  "url": "/en/products-and-services/services/group-rental",
+                                  "linkType": "regular"
+                                }
+                              ]
+                            },
+                            {
+                              "title": "Business Rentals",
+                              "url": null,
+                              "subLinks": [
+                                {
+                                  "title": "Travel Agents",
+                                  "url": "/en/business-programs/travel-agent",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Small & Mid-size Business",
+                                  "url": "/en/business-programs/small-mid-sized-business/partner-1",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Business Log In",
+                                  "url": "https://www.avisforbusiness.com/rewards/",
+                                  "linkType": "regular"
+                                }
+                              ]
+                            },
+                            {
+                              "title": "Company Info",
+                              "url": null,
+                              "subLinks": [
+                                {
+                                  "title": "About Avis",
+                                  "target": "_self",
+                                  "url": "/en/about-avis",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Best Price Pledge",
+                                  "target": "_self",
+                                  "url": "/en/products-and-services/services/best-rate-guarantee",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Site Map",
+                                  "target": "_self",
+                                  "url": "/en/sitemap",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Lost & Found",
+                                  "target": "_blank",
+                                  "url": "https://www.lostreturns.com/index.php?page=Partners.BrandVideoLayout&Key=79a5bae17b21485c9ec96f19394b4841a4478b8c",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Feedback",
+                                  "target": "_self",
+                                  "url": "#",
+                                  "id": "oo_feedback",
+                                  "linkType": "feedback"
+                                },
+                                {
+                                  "title": "Avis Careers",
+                                  "target": "_blank",
+                                  "url": "https://www.avisbudgetgroup.jobs/",
+                                  "linkType": "regular"
+                                },
+                                {
+                                  "title": "Accessibility",
+                                  "target": "_self",
+                                  "url": "#",
+                                  "id": "btn-accessibility",
+                                  "linkType": "accessibility"
+                                }
+                              ]
+                            }
+                          ],
+                          "socialList": [
+                            {
+                              "title": "Facebook",
+                              "target": "_blank",
+                              "url": "#",
+                              "icon": null
+                            },
+                            {
+                              "title": "Twitter",
+                              "target": "_self",
+                              "url": "#",
+                              "icon": null
+                            },
+                            {
+                              "title": "TikTok",
+                              "url": "#",
+                              "icon": null
+                            },
+                            {
+                              "title": "Instagram",
+                              "target": "_blank",
+                              "url": "#",
+                              "icon": null
+                            },
+                            {
+                              "title": "Youtube",
+                              "url": "#",
+                              "icon": null
+                            }
+                          ],
+                          "i18n": {
+                            "global.back.label": "Back",
+                            "global.login.label": "Log In",
+                            "global.logout.label": "Log Out"
+                          },
+                          "dataLayer": {
+                            "footerNavigation-3f95e4c2f7": {
+                              "@type": "avis/components/content/footerNavigation",
+                              "repo:modifyDate": "2026-01-05T19:53:05Z"
+                            }
+                          },
+                          ":type": "avis/components/content/footerNavigation"
+                        },
+                        "multicolumnlinks": {
+                          "id": "multiColumnLinks-49d252dbc0",
+                          "title": "POPULAR CAR RENTAL LOCATIONS",
+                          "background": "default",
+                          "hideTabs": false,
+                          "navigationList": [
+                            {
+                              "title": "Cities",
+                              "target": "_self",
+                              "url": null,
+                              "subLinks": [
+                                {
+                                  "title": "Albuquerque, NM",
+                                  "url": "/en/locations/nam/us/nm/albuquerque"
+                                },
+                                {
+                                  "title": "Brooklyn, NY",
+                                  "url": "/en/locations/nam/us/ny/brooklyn"
+                                },
+                                {
+                                  "title": "Columbus, OH",
+                                  "url": "/en/locations/nam/us/oh/columbus"
+                                },
+                                {
+                                  "title": "Houston, TX",
+                                  "url": "/en/locations/nam/us/tx/houston"
+                                },
+                                {
+                                  "title": "Anchorage, AK",
+                                  "url": "/en/locations/nam/us/ak/anchorage"
+                                },
+                                {
+                                  "title": "Charleston, SC",
+                                  "url": "/en/locations/nam/us/sc/charleston"
+                                },
+                                {
+                                  "title": "Dallas, TX",
+                                  "url": "/en/locations/nam/us/tx/dallas"
+                                },
+                                {
+                                  "title": "Las Vegas, NV",
+                                  "url": "/en/locations/nam/us/nv/las-vegas"
+                                },
+                                {
+                                  "title": "Atlanta, GA",
+                                  "url": "/en/locations/nam/us/ga/atlanta"
+                                },
+                                {
+                                  "title": "Charlotte, NC",
+                                  "url": "/en/locations/nam/us/nc/charlotte"
+                                },
+                                {
+                                  "title": "Denver, CO",
+                                  "url": "/en/locations/nam/us/co/denver"
+                                },
+                                {
+                                  "title": "Los Angeles, CA",
+                                  "url": "/en/locations/nam/us/ca/los-angeles"
+                                },
+                                {
+                                  "title": "Austin, TX",
+                                  "url": "/en/locations/nam/us/tx/austin"
+                                },
+                                {
+                                  "title": "Chicago, IL",
+                                  "url": "/en/locations/nam/us/il/chicago"
+                                },
+                                {
+                                  "title": "Fort Lauderdale, FL",
+                                  "url": "/en/locations/nam/us/fl/fort-lauderdale"
+                                },
+                                {
+                                  "title": "Miami, FL",
+                                  "url": "/en/locations/nam/us/fl/miami"
+                                },
+                                {
+                                  "title": "Boston, MA",
+                                  "url": "/en/locations/nam/us/ma/boston"
+                                },
+                                {
+                                  "title": "Colorado Springs, CO",
+                                  "url": "/en/locations/nam/us/co/colorado-springs"
+                                },
+                                {
+                                  "title": "Honolulu, Hi",
+                                  "url": "/en/locations/nam/us/hi/honolulu-oahu"
+                                },
+                                {
+                                  "title": "Nashville, TN",
+                                  "url": "/en/locations/nam/us/tn/nashville"
+                                }
+                              ]
+                            },
+                            {
+                              "title": "Airports",
+                              "target": "_self",
+                              "url": null,
+                              "subLinks": [
+                                {
+                                  "title": "Atlanta (ATL)",
+                                  "url": "/en/locations/nam/us/ga/college-park/atl"
+                                },
+                                {
+                                  "title": "Denver (DEN)",
+                                  "url": "/en/locations/nam/us/co/denver/den"
+                                },
+                                {
+                                  "title": "Miami (MIA)",
+                                  "url": "/en/locations/nam/us/fl/miami/mia"
+                                },
+                                {
+                                  "title": "Philadelphia (PHL)",
+                                  "url": "/en/locations/nam/us/pa/philadelphia/phl"
+                                },
+                                {
+                                  "title": "Austin Bergstrom (AUS)",
+                                  "url": "/en/locations/nam/us/tx/austin/aus"
+                                },
+                                {
+                                  "title": "Detroit (DTW)",
+                                  "url": "/en/locations/nam/us/mi/detroit/dtw"
+                                },
+                                {
+                                  "title": "Minneapolis St. Paul (MSP)",
+                                  "url": "/en/locations/nam/us/mn/saint-paul/msp"
+                                },
+                                {
+                                  "title": "San Diego (SAN)",
+                                  "url": "/en/locations/nam/us/ca/san-diego/san"
+                                },
+                                {
+                                  "title": "Boston Logan (BOS)",
+                                  "url": "/en/locations/nam/us/ma/boston/bos"
+                                },
+                                {
+                                  "title": "Fort Lauderdale (FLL)",
+                                  "url": "/en/locations/nam/us/fl/fort-lauderdale/fll"
+                                },
+                                {
+                                  "title": "Nashville (BNA)",
+                                  "url": "/en/locations/nam/us/tn/nashville/bna"
+                                },
+                                {
+                                  "title": "San Francisco (SFO)",
+                                  "url": "/en/locations/nam/us/ca/san-francisco/sfo"
+                                },
+                                {
+                                  "title": "Chicago O’Hare (ORD)",
+                                  "url": "/en/locations/nam/us/il/chicago/ord"
+                                },
+                                {
+                                  "title": "Houston George Bush (IAH)",
+                                  "url": "/en/locations/nam/us/tx/houston/hou"
+                                },
+                                {
+                                  "title": "Newark Liberty (EWR)",
+                                  "url": "/en/locations/nam/us/nj/newark/ewr"
+                                },
+                                {
+                                  "title": "Seattle Tacoma (SEA)",
+                                  "url": "/en/locations/nam/us/wa/seattle/sea"
+                                },
+                                {
+                                  "title": "Dallas/Fort Worth (DFW)",
+                                  "url": "/en/locations/nam/us/tx/dallas/dfw"
+                                },
+                                {
+                                  "title": "Los Angeles (LAX)",
+                                  "url": "/en/locations/nam/us/ca/los-angeles/lax"
+                                },
+                                {
+                                  "title": "Orlando (MCO)",
+                                  "url": "/en/locations/nam/us/fl/orlando/mco"
+                                },
+                                {
+                                  "title": "Washington Ronald Regan (DCA)",
+                                  "url": "/en/locations/nam/us/va/arlington/dca"
+                                }
+                              ]
+                            }
+                          ],
+                          "personalizationLocation": "content:experience-fragments:avis:nam:countries:us:en_us:site:footer:master:jcr_content:root:container:footer:multicolumnlinks",
+                          "dataLayer": {
+                            "multiColumnLinks-49d252dbc0": {
+                              "@type": "avis/components/content/multiColumnLinks",
+                              "repo:modifyDate": "2025-07-15T19:44:08Z"
+                            }
+                          },
+                          ":type": "avis/components/content/multiColumnLinks"
+                        },
+                        "footerlegal": {
+                          "id": "footerLegal-6823ab2d67",
+                          "termsList": [
+                            {
+                              "title": "Terms of Use",
+                              "target": "_self",
+                              "url": "/en/legal-documents/terms-of-use",
+                              "linkType": "regular"
+                            },
+                            {
+                              "title": "Privacy Notice",
+                              "target": "_self",
+                              "url": "/en/legal-documents/privacy-notice",
+                              "linkType": "regular"
+                            },
+                            {
+                              "title": "Your Privacy Choices",
+                              "target": "_self",
+                              "url": "#",
+                              "className": "ot-sdk-show-settings",
+                              "linkType": "onetrust"
+                            },
+                            {
+                              "title": "Copyright Notices",
+                              "target": "_self",
+                              "url": "/en/copyright-notices",
+                              "linkType": "regular"
+                            },
+                            {
+                              "title": "Fraud & Scams",
+                              "target": "_self",
+                              "url": "/en/customer-service",
+                              "linkType": "regular"
+                            }
+                          ],
+                          "legalText": "© 2026 Avis Rent A Car System, LLC",
+                          "dataLayer": {
+                            "footerLegal-6823ab2d67": {
+                              "@type": "avis/components/content/footerLegal",
+                              "repo:modifyDate": "2026-02-10T17:56:04Z"
+                            }
+                          },
+                          ":type": "avis/components/content/footerLegal"
+                        }
+                      },
+                      ":type": "avis/components/content/footer",
+                      "dataLayer": {
+                        "footer-f8e9a0f3e8": {
+                          "@type": "avis/components/content/footer"
+                        }
+                      }
+                    }
+                  },
+                  ":type": "avis/components/structure/container",
+                  "dataLayer": {
+                    "container-0f92f11973": {
+                      "@type": "avis/components/structure/container",
+                      "repo:modifyDate": "2025-03-20T11:42:03Z"
+                    }
+                  }
+                }
+              },
+              ":type": "avis/components/structure/container",
+              "dataLayer": {
+                "container-10f095741f": {
+                  "@type": "avis/components/structure/container"
+                }
+              }
+            }
+          },
+          ":type": "avis/components/structure/experiencefragment",
+          "dataLayer": {
+            "experiencefragment-8404c259ed": {
+              "@type": "avis/components/structure/experiencefragment"
+            }
+          }
+        }
+      },
+      ":type": "avis/components/structure/container",
+      "dataLayer": {
+        "container-36bc552d1d": {
+          "@type": "avis/components/structure/container"
+        }
+      }
+    },
+    "cq:featuredimage": {
+      "id": "image-5f0bca0d64",
+      "lazyEnabled": true,
+      "dataLayer": {
+        "image-5f0bca0d64": {
+          "@type": "core/wcm/components/image/v3/image",
+          "repo:modifyDate": "2025-06-06T21:22:00Z"
+        }
+      },
+      ":type": "core/wcm/components/image/v3/image"
+    }
+  }
+}

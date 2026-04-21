@@ -1,0 +1,484 @@
+{
+  "info": {
+    "name": "ABG Knowledge Base System",
+    "description": "KB Manager v2 API — Ingestion pipeline, source management, file review, search, and navigation.\n\nBase URL: {{baseUrl}} (default: http://localhost:8000/api/v1)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "jobId",
+      "value": "{{jobId}}",
+      "type": "string",
+      "description": "Ingestion job UUID — set after POST /ingest"
+    },
+    {
+      "key": "sourceId",
+      "value": "{{sourceId}}",
+      "type": "string",
+      "description": "Source UUID"
+    },
+    {
+      "key": "fileId",
+      "value": "{{fileId}}",
+      "type": "string",
+      "description": "KB File UUID"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/../health",
+              "host": ["{{baseUrl}}"],
+              "path": ["..", "health"]
+            },
+            "description": "Basic health check. Returns 200 if server is running."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats"]
+            },
+            "description": "Aggregate dashboard stats: total files, pending review, approved, rejected, active jobs, sources count, public/internal file counts."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ingestion",
+      "description": "Two-phase ingestion pipeline: Scout (discover + classify) then Process (extract + QA + route + upload).",
+      "item": [
+        {
+          "name": "1. Start Ingestion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.jobs && res.jobs.length > 0) {",
+                  "    pm.collectionVariables.set('jobId', res.jobs[0].job_id);",
+                  "    pm.collectionVariables.set('sourceId', res.jobs[0].source_id);",
+                  "    console.log('Set jobId=' + res.jobs[0].job_id);",
+                  "    console.log('Set sourceId=' + res.jobs[0].source_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connector_type\": \"aem\",\n  \"urls\": [\n    {\n      \"url\": \"https://example.com/page.html\",\n      \"region\": \"us\",\n      \"brand\": \"brand-name\",\n      \"nav_label\": null,\n      \"nav_section\": null,\n      \"page_path\": null\n    }\n  ],\n  \"kb_target\": \"public\",\n  \"steering_prompt\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest"]
+            },
+            "description": "Kick off ingestion. Creates Source + IngestionJob, starts Scout phase.\n\nReturns job_id and source_id. Auto-sets collection variables for subsequent requests."
+          }
+        },
+        {
+          "name": "2. Scout Stream (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingest/{{jobId}}/scout-stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest", "{{jobId}}", "scout-stream"]
+            },
+            "description": "SSE stream of scouting progress. Streams events as scout discovers and classifies child links. Terminal event: scout_complete.\n\nNote: SSE streams work best in Postman's 'Send and Download' mode or via cURL."
+          }
+        },
+        {
+          "name": "3. Get Content Map",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ingest/{{jobId}}/content-map",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest", "{{jobId}}", "content-map"]
+            },
+            "description": "After scouting completes, returns discovered content structure:\n- components: page components found\n- children: discovered child sources with classification (expansion/sibling/dismissed)\n- summary: scout analysis\n\nReturns 409 if scouting still in progress."
+          }
+        },
+        {
+          "name": "4. Confirm & Process",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_overrides\": [\n    {\n      \"source_id\": \"{{sourceId}}\",\n      \"classification\": \"expansion\"\n    }\n  ],\n  \"excluded_component_ids\": [],\n  \"steering_prompt\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest/{{jobId}}/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest", "{{jobId}}", "confirm"]
+            },
+            "description": "Confirm scout results and start processing phase.\n\nOptionally override child source classifications (expansion/sibling/dismissed), exclude specific components, or add steering prompt.\n\nReturns 409 if job not in awaiting_confirmation state."
+          }
+        },
+        {
+          "name": "5. Progress Stream (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingest/{{jobId}}/progress-stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest", "{{jobId}}", "progress-stream"]
+            },
+            "description": "SSE stream of extraction + QA progress. Streams events as each source is processed. Terminal event: job_complete."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sources",
+      "description": "Manage ingestion sources. Sources form a parent/child tree — parent is the original URL, children are discovered links.",
+      "item": [
+        {
+          "name": "List Sources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sources?page=1&size=20&parent_only=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["sources"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "size", "value": "20", "description": "Page size, max 100 (default: 20)" },
+                { "key": "parent_only", "value": "true", "description": "Only root sources, no children (default: true)" },
+                { "key": "type", "value": "", "description": "Filter by source type (aem, upload)", "disabled": true },
+                { "key": "region", "value": "", "description": "Filter by region", "disabled": true },
+                { "key": "brand", "value": "", "description": "Filter by brand", "disabled": true },
+                { "key": "kb_target", "value": "", "description": "Filter: public | internal", "disabled": true }
+              ]
+            },
+            "description": "Paginated list of sources. Default shows only parent (root) sources.\n\nEach source includes: url, status, is_scouted, is_ingested, child_count, job_count."
+          }
+        },
+        {
+          "name": "Get Source Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sources/{{sourceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["sources", "{{sourceId}}"]
+            },
+            "description": "Full source detail including:\n- Lifecycle: is_scouted, is_ingested, last_ingested_at\n- scout_summary: scout analysis results\n- children: list of discovered child sources with classification\n- file_stats: total/approved/pending/rejected file counts"
+          }
+        },
+        {
+          "name": "Get Active Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sources/active-jobs",
+              "host": ["{{baseUrl}}"],
+              "path": ["sources", "active-jobs"]
+            },
+            "description": "Map of source_id → job_id for all currently active ingestion jobs. Useful for showing real-time status indicators on source list."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Files",
+      "description": "KB File management — review, approve, reject, edit content.",
+      "item": [
+        {
+          "name": "List Files",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/files?page=1&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["files"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number" },
+                { "key": "size", "value": "20", "description": "Page size, max 100" },
+                { "key": "status", "value": "", "description": "Filter: pending_review | approved | rejected | needs_review", "disabled": true },
+                { "key": "region", "value": "", "description": "Filter by region", "disabled": true },
+                { "key": "brand", "value": "", "description": "Filter by brand", "disabled": true },
+                { "key": "kb_target", "value": "", "description": "Filter: public | internal", "disabled": true },
+                { "key": "job_id", "value": "", "description": "Filter by ingestion job UUID", "disabled": true },
+                { "key": "source_id", "value": "", "description": "Filter by source UUID (via junction table)", "disabled": true },
+                { "key": "search", "value": "", "description": "Search by title or content", "disabled": true }
+              ]
+            },
+            "description": "Paginated list of KB files with filters.\n\nEach file includes: title, status, quality/uniqueness verdicts, category, visibility, tags, source_url."
+          }
+        },
+        {
+          "name": "Get File Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/files/{{fileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["files", "{{fileId}}"]
+            },
+            "description": "Full file detail including:\n- md_content: extracted markdown\n- quality/uniqueness reasoning from QA\n- similar_files: files flagged as duplicates\n- sources: M2M relationships (primary, referenced, merged)\n- review status and notes"
+          }
+        },
+        {
+          "name": "Approve File",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewed_by\": \"reviewer-name\",\n  \"notes\": \"Looks good. Content is accurate and well-structured.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/files/{{fileId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["files", "{{fileId}}", "approve"]
+            },
+            "description": "Approve file for KB inclusion. Triggers background S3 upload with .metadata.json sidecar.\n\nSidecar includes: title, source_url, region, brand, kb_target, category, visibility, tags."
+          }
+        },
+        {
+          "name": "Reject File",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewed_by\": \"reviewer-name\",\n  \"notes\": \"Content is outdated and references deprecated product features.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/files/{{fileId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["files", "{{fileId}}", "reject"]
+            },
+            "description": "Reject file. Notes field is required — explain why."
+          }
+        },
+        {
+          "name": "Edit File Content",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"md_content\": \"# Updated Title\\n\\nRevised markdown content here.\",\n  \"reviewed_by\": \"editor-name\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/files/{{fileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["files", "{{fileId}}"]
+            },
+            "description": "Edit file markdown content. Triggers background QA re-run — quality/uniqueness verdicts will update based on new content."
+          }
+        },
+        {
+          "name": "Revalidate File",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/files/{{fileId}}/revalidate",
+              "host": ["{{baseUrl}}"],
+              "path": ["files", "{{fileId}}", "revalidate"]
+            },
+            "description": "Re-run QA on file without editing. Useful when QA model or routing matrix has been updated. Synchronous — waits for QA to complete before responding."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Knowledge Base",
+      "description": "Search and chat against the Bedrock Knowledge Base. Currently returns stub data (Phase 7).",
+      "item": [
+        {
+          "name": "Search KB (SSE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"How do I reset my password?\",\n  \"kb_target\": \"public\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kb/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["kb", "search"]
+            },
+            "description": "Semantic search against KB. Returns SSE stream with result events and search_complete terminal event.\n\nCurrently stub — will connect to Bedrock KB RetrieveAndGenerate in Phase 7."
+          }
+        },
+        {
+          "name": "Chat with KB (SSE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Explain the claims process step by step\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kb/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["kb", "chat"]
+            },
+            "description": "RAG chat against KB. Returns SSE stream: sources event, token events (streamed answer), chat_complete terminal event.\n\nCurrently stub — Phase 7."
+          }
+        },
+        {
+          "name": "Download File (Presigned URL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"s3_uri\": \"s3://bucket-name/path/to/file.md\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kb/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["kb", "download"]
+            },
+            "description": "Generate presigned S3 download URL for a KB file. Returns temporary URL valid for limited time."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Navigation",
+      "item": [
+        {
+          "name": "Get Nav Tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/nav/tree?url=https://example.com/model.json&force_refresh=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["nav", "tree"],
+              "query": [
+                { "key": "url", "value": "https://example.com/model.json", "description": "Root URL of AEM page model.json" },
+                { "key": "force_refresh", "value": "false", "description": "Bypass 24h cache and fetch fresh (default: false)" }
+              ]
+            },
+            "description": "Fetch AEM navigation tree from model.json URL. Results cached 24h. Use force_refresh=true to bypass cache.\n\nReturns 502 if AEM request fails."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Queue",
+      "description": "Batch URL queue for bulk ingestion processing.",
+      "item": [
+        {
+          "name": "Add to Queue",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"urls\": [\n    \"https://example.com/page1.html\",\n    \"https://example.com/page2.html\"\n  ],\n  \"region\": \"us\",\n  \"brand\": \"brand-name\",\n  \"kb_target\": \"public\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/queue",
+              "host": ["{{baseUrl}}"],
+              "path": ["queue"]
+            },
+            "description": "Add URLs to ingestion queue. Returns count of queued items and their UUIDs.\n\nQueue worker picks these up and processes them through the full Scout → Process pipeline."
+          }
+        },
+        {
+          "name": "List Queue Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/queue",
+              "host": ["{{baseUrl}}"],
+              "path": ["queue"],
+              "query": [
+                { "key": "status", "value": "", "description": "Filter: pending | processing | completed | failed", "disabled": true }
+              ]
+            },
+            "description": "List all queue items with status counts. Each item shows URL, status, timestamps, and linked job_id if processing started."
+          }
+        },
+        {
+          "name": "Pipeline Logs Stream (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logs/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs", "stream"]
+            },
+            "description": "Live pipeline log stream via SSE. Yields log events as JSON. Keepalive ping every 15s.\n\nUseful for monitoring queue worker and pipeline activity in real-time."
+          }
+        }
+      ]
+    }
+  ]
+}
