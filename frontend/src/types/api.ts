@@ -235,3 +235,34 @@ export interface WorkerState {
   phase: string | null;
   startedAt: number | null;
 }
+
+// Global search
+export interface SearchFileHit {
+  id: string;
+  title: string;
+  status: FileStatus;
+  tags: string[];
+  category: string | null;
+  source_url: string | null;
+}
+
+export interface SearchSourceHit {
+  id: string;
+  url: string;
+  brand: string | null;
+  region: string | null;
+}
+
+export interface SearchJobHit {
+  id: string;
+  source_label: string;
+  status: JobStatus;
+  brand: string | null;
+}
+
+export interface GlobalSearchResponse {
+  q: string;
+  files: { items: SearchFileHit[]; total: number };
+  sources: { items: SearchSourceHit[]; total: number };
+  jobs: { items: SearchJobHit[]; total: number };
+}

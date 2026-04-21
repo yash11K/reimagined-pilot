@@ -15,6 +15,7 @@ import type {
   QueueItem,
   JobSummary,
   JobStatus,
+  GlobalSearchResponse,
 } from "@/types/api";
 
 // ----- Stats -----
@@ -142,3 +143,9 @@ export const submitToQueue = (body: QueueSubmitRequest) =>
 
 export const getQueueItems = (params?: { page?: number; size?: number }) =>
   apiClient.get<Paginated<QueueItem>>("/queue", { params }).then((r) => r.data);
+
+// ----- Global Search -----
+export const globalSearch = (q: string) =>
+  apiClient
+    .get<GlobalSearchResponse>("/search", { params: { q } })
+    .then((r) => r.data);

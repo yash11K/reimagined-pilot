@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Search, Plus, Rocket, Bell } from "lucide-react";
+import { Plus, Rocket, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useBrand, type BrandKey } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { NavTreePicker } from "@/components/ingest/NavTreePicker";
+import { GlobalSearch } from "./GlobalSearch";
 
 const BRANDS: { key: BrandKey; label: string }[] = [
   { key: "all", label: "All" },
@@ -18,34 +19,12 @@ export function TopBar() {
   const { brand, setBrand } = useBrand();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [q, setQ] = useState("");
   const [launchOpen, setLaunchOpen] = useState(false);
-
-  const onSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // FAQ static search per spec
-    if (q.trim().toLowerCase() === "faq") {
-      navigate("/knowledge-library?search=FAQ");
-    } else if (q.trim()) {
-      navigate(`/knowledge-library?search=${encodeURIComponent(q)}`);
-    }
-  };
 
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-4 border-b border-line bg-bg-surface px-6">
-        <form onSubmit={onSearchSubmit} className="flex-1 max-w-xl">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder='Search policies, sources, owners, regions… (try "FAQ")'
-              className="h-10 w-full rounded-lg border border-line bg-bg-muted pl-10 pr-3 text-sm text-ink placeholder:text-ink-faint focus:border-ink-soft focus:bg-bg-surface focus:outline-none focus:ring-2 focus:ring-ink/10"
-            />
-          </div>
-        </form>
-
+        {/* Left: brand switcher */}
         <div className="flex items-center gap-1 rounded-lg border border-line bg-bg-muted p-1">
           {BRANDS.map((b) => (
             <button
@@ -63,22 +42,30 @@ export function TopBar() {
           ))}
         </div>
 
-        <Button variant="outline" size="md" onClick={() => setLaunchOpen(true)}>
-          <Rocket className="h-4 w-4" />
-          Launch Ingestion
-        </Button>
+        {/* Center: global search */}
+        <div className="flex flex-1 justify-center">
+          <GlobalSearch />
+        </div>
 
-        <Button variant="primary" size="md" onClick={() => navigate("/authoring-mode")}>
-          <Plus className="h-4 w-4" />
-          Create Article
-        </Button>
+        {/* Right: actions */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="md" onClick={() => setLaunchOpen(true)}>
+            <Rocket className="h-4 w-4" />
+            Launch Ingestion
+          </Button>
 
-        <button className="grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-bg-muted hover:text-ink">
-          <Bell className="h-4 w-4" />
-        </button>
+          <Button variant="primary" size="md" onClick={() => navigate("/authoring-mode")}>
+            <Plus className="h-4 w-4" />
+            Create Article
+          </Button>
 
-        <div className="grid h-9 w-9 place-items-center rounded-full bg-sidebar text-xs font-semibold text-white">
-          {user.initials}
+          <button className="grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-bg-muted hover:text-ink">
+            <Bell className="h-4 w-4" />
+          </button>
+
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-sidebar text-xs font-semibold text-white">
+            {user.initials}
+          </div>
         </div>
       </header>
       <NavTreePicker open={launchOpen} onClose={() => setLaunchOpen(false)} />
