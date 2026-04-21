@@ -18,6 +18,7 @@ from kb_manager.routes.nav import router as nav_router
 from kb_manager.routes.stats import router as stats_router
 from kb_manager.routes.queue import router as queue_router
 from kb_manager.routes.activity import router as activity_router
+from kb_manager.routes.search import router as search_router
 from kb_manager.services.stream_manager import StreamManager
 from kb_manager.services.s3_uploader import S3Uploader
 from kb_manager.services.versioning import VersioningService
@@ -137,6 +138,7 @@ def create_app() -> FastAPI:
     app.include_router(stats_router, prefix="/api/v1")
     app.include_router(queue_router, prefix="/api/v1")
     app.include_router(activity_router, prefix="/api/v1")
+    app.include_router(search_router, prefix="/api/v1")
 
     @app.get("/health")
     async def health() -> dict:
