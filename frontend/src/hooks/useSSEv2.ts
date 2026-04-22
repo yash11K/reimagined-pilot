@@ -23,14 +23,9 @@ export interface UseSSEv2Options {
   onEvent?: (ev: SSEv2Event) => void;
 }
 
-let _counter = 0;
-const nextClientId = (): string => {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `sse-${Date.now()}-${++_counter}`;
-  }
-};
+import { uuid } from "@/lib/uuid";
+
+const nextClientId = (): string => uuid();
 
 /**
  * Validates that a parsed JSON value has the required SSE v2 envelope shape.

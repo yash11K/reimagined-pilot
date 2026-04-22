@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { uuid } from "@/lib/uuid";
 import { Save, Plus, Trash2, FileText, Eye, Sparkles, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
@@ -39,7 +40,7 @@ function saveDrafts(drafts: Draft[]) {
 
 function newDraft(): Draft {
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     title: "",
     body: "",
     metadata: [{ key: "category", value: "" }],

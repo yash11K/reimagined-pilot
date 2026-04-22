@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { uuid } from "@/lib/uuid";
 
 // ---------------------------------------------------------------------------
 // Mock AI response generator — simulates streaming text
@@ -136,7 +137,7 @@ export function AIAssistantPanel({ articleBody, onInsert, className }: AIAssista
   const simulateStream = useCallback(
     (fullText: string, action: ActionId, userLabel: string) => {
       // Add user message
-      const userId = crypto.randomUUID();
+      const userId = uuid();
       const userMsg: ChatMessage = {
         id: userId,
         role: "user",
@@ -158,7 +159,7 @@ export function AIAssistantPanel({ articleBody, onInsert, className }: AIAssista
         if (idx >= words.length) {
           clearInterval(interval);
           const assistantMsg: ChatMessage = {
-            id: crypto.randomUUID(),
+            id: uuid(),
             role: "assistant",
             content: fullText,
             action,
