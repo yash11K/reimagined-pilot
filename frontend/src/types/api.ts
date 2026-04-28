@@ -266,3 +266,37 @@ export interface GlobalSearchResponse {
   sources: { items: SearchSourceHit[]; total: number };
   jobs: { items: SearchJobHit[]; total: number };
 }
+
+// KB (Bedrock) — POST /kb/search, /kb/chat, /kb/sync
+export interface KbSearchRequest {
+  query: string;
+  kb_target: KbTarget;
+  limit?: number;
+}
+
+export interface KbSearchResult {
+  rank: number;
+  title: string;
+  snippet: string;
+  source_url: string | null;
+  score: number;
+  s3_uri: string | null;
+}
+
+export interface KbChatRequest {
+  query: string;
+  kb_target: KbTarget;
+  context_limit?: number;
+}
+
+export interface KbChatSource {
+  title: string;
+  url: string | null;
+  snippet: string;
+  s3_uri: string | null;
+}
+
+export interface KbSyncResponse {
+  ingestion_job_id: string;
+  status: string;
+}

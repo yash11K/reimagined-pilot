@@ -20,6 +20,12 @@ Thumbs.db
 # Pytest
 .pytest_cache/
 
+# Data files
+*.xlsx
+
+# Logs
+backend/logs/
+
 # Misc
 *.pem
 update.sh

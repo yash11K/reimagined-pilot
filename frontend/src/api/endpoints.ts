@@ -16,6 +16,7 @@ import type {
   JobSummary,
   JobStatus,
   GlobalSearchResponse,
+  KbSyncResponse,
 } from "@/types/api";
 
 // ----- Stats -----
@@ -149,3 +150,8 @@ export const globalSearch = (q: string) =>
   apiClient
     .get<GlobalSearchResponse>("/search", { params: { q } })
     .then((r) => r.data);
+
+// ----- KB (Bedrock) -----
+// /kb/search and /kb/chat are SSE — see src/api/kbStream.ts
+export const kbSync = () =>
+  apiClient.post<KbSyncResponse>("/kb/sync").then((r) => r.data);

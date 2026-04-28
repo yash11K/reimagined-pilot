@@ -1,74 +1,66 @@
-"""Unit tests for the QA routing matrix."""
+"""Tests for the QA verdict → file status routing matrix."""
 
 import pytest
 
 from kb_manager.services.routing_matrix import route_file
 
 
-class TestRoutingMatrix:
-    """Tests for the 3×3 verdict matrix (Requirements 16.1–16.7)."""
+class TestAcceptedQuality:
+    """Files with accepted quality verdict."""
 
-    def test_good_unique_approved(self):
-        assert route_file("good", "unique", True) == "approved"
+    def test_accepted_unique_approved(self):
+        assert route_file("accepted", "unique", True) == "approved"
 
-    def test_good_overlapping_pending_review(self):
-        assert route_file("good", "overlapping", True) == "pending_review"
+    def test_accepted_overlapping_approved(self):
+        assert route_file("accepted", "overlapping", True) == "approved"
 
-    def test_good_duplicate_rejected(self):
-        assert route_file("good", "duplicate", True) == "rejected"
+    def test_accepted_conflicting_pending_review(self):
+        assert route_file("accepted", "conflicting", True) == "pending_review"
 
-    def test_acceptable_unique_pending_review(self):
-        assert route_file("acceptable", "unique", True) == "pending_review"
 
-    def test_acceptable_overlapping_pending_review(self):
-        assert route_file("acceptable", "overlapping", True) == "pending_review"
+class TestRejectedQuality:
+    """Files with rejected quality verdict are always rejected."""
 
-    def test_acceptable_duplicate_rejected(self):
-        assert route_file("acceptable", "duplicate", True) == "rejected"
+    def test_rejected_unique_rejected(self):
+        assert route_file("rejected", "unique", True) == "rejected"
 
-    def test_poor_unique_rejected(self):
-        assert route_file("poor", "unique", True) == "rejected"
+    def test_rejected_overlapping_rejected(self):
+        assert route_file("rejected", "overlapping", True) == "rejected"
 
-    def test_poor_overlapping_rejected(self):
-        assert route_file("poor", "overlapping", True) == "rejected"
-
-    def test_poor_duplicate_rejected(self):
-        assert route_file("poor", "duplicate", True) == "rejected"
+    def test_rejected_conflicting_rejected(self):
+        assert route_file("rejected", "conflicting", True) == "rejected"
 
 
 class TestMetadataGate:
-    """Tests for the metadata completeness gate (Requirement 16.8)."""
+    """Incomplete metadata always results in rejection."""
 
     @pytest.mark.parametrize(
         "quality,uniqueness",
         [
-            ("good", "unique"),
-            ("good", "overlapping"),
-            ("good", "duplicate"),
-            ("acceptable", "unique"),
-            ("acceptable", "overlapping"),
-            ("acceptable", "duplicate"),
-            ("poor", "unique"),
-            ("poor", "overlapping"),
-            ("poor", "duplicate"),
+            ("accepted", "unique"),
+            ("accepted", "overlapping"),
+            ("accepted", "conflicting"),
+            ("rejected", "unique"),
+            ("rejected", "overlapping"),
+            ("rejected", "conflicting"),
         ],
     )
     def test_incomplete_metadata_always_rejected(self, quality, uniqueness):
         assert route_file(quality, uniqueness, False) == "rejected"
 
     def test_metadata_gate_overrides_approved(self):
-        """Even good+unique is rejected when metadata is incomplete."""
-        assert route_file("good", "unique", False) == "rejected"
+        """Even accepted+unique is rejected when metadata is incomplete."""
+        assert route_file("accepted", "unique", False) == "rejected"
 
 
-class TestUnknownVerdicts:
-    """Edge case: unknown verdict values fall back to rejected."""
+class TestEdgeCases:
+    """Unknown or unexpected verdict values fall through to rejected."""
 
     def test_unknown_quality_rejected(self):
         assert route_file("unknown", "unique", True) == "rejected"
 
     def test_unknown_uniqueness_rejected(self):
-        assert route_file("good", "unknown", True) == "rejected"
+        assert route_file("accepted", "unknown", True) == "rejected"
 
     def test_both_unknown_rejected(self):
         assert route_file("unknown", "unknown", True) == "rejected"

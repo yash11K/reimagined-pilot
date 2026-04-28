@@ -83,8 +83,8 @@ class FakeExtractedFile:
 
 @dataclass
 class FakeQAResult:
-    quality_verdict: str = "good"
-    quality_reasoning: str = "Well-structured content"
+    quality_verdict: str = "accepted"
+    quality_reasoning: str = "Substantive content worth ingesting"
     uniqueness_verdict: str = "unique"
     uniqueness_reasoning: str = "No overlap found"
     similar_file_ids: list[str] = field(default_factory=list)
@@ -94,6 +94,7 @@ class FakeQAResult:
 class FakeSource:
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     identifier: str = "https://example.com/page.model.json"
+    url: str = "https://example.com/page.model.json"
     region: str | None = "nam"
     brand: str | None = "avis"
     kb_target: str = "public"
@@ -262,14 +263,13 @@ async def test_process_failure_sets_job_failed():
 
     pipeline._session_factory = MagicMock(side_effect=session_side_effect)
 
-    from kb_manager.schemas.ingest import ConfirmRequest
-
-    confirmation = ConfirmRequest()
-
-    with patch("kb_manager.services.pipeline.job_queries") as mock_jobs:
+    with patch("kb_manager.services.pipeline.job_queries") as mock_jobs, \
+         patch("kb_manager.services.pipeline.source_queries") as mock_sources:
         mock_jobs.update_job_status = AsyncMock()
+        mock_jobs.get_job = AsyncMock(return_value=FakeJob(id=job_id))
+        mock_sources.mark_failed = AsyncMock()
 
-        await pipeline.run_process(job_id, confirmation)
+        await pipeline.run_process(job_id)
 
         mock_jobs.update_job_status.assert_called_once_with(
             fail_db, job_id, "failed", error_message="DB connection lost"
@@ -497,16 +497,16 @@ async def test_individual_file_failure_continues_processing():
     fake_kb_file = FakeKBFile()
 
     with patch("kb_manager.services.pipeline.job_queries") as mock_jobs, \
-         patch("kb_manager.services.pipeline.link_queries") as mock_links, \
          patch("kb_manager.services.pipeline.file_queries") as mock_files, \
          patch("kb_manager.services.pipeline.ExtractorAgent") as mock_ext_cls, \
          patch("kb_manager.services.pipeline.QAAgent") as mock_qa_cls, \
+         patch("kb_manager.services.pipeline.UniquenessAgent") as mock_uq_cls, \
+         patch("kb_manager.services.pipeline.run_qa_and_uniqueness") as mock_run_qa, \
          patch("kb_manager.services.pipeline.httpx.AsyncClient") as mock_client_cls:
 
         mock_jobs.get_job = AsyncMock(return_value=fake_job)
         mock_jobs.update_job = AsyncMock()
         mock_jobs.update_job_status = AsyncMock()
-        mock_links.get_links_by_job = AsyncMock(return_value=[])
 
         mock_files.create_file = AsyncMock(return_value=fake_kb_file)
         mock_files.update_file = AsyncMock()
@@ -535,14 +535,10 @@ async def test_individual_file_failure_continues_processing():
         mock_ext.run = AsyncMock(return_value=[FakeExtractedFile()])
         mock_ext_cls.return_value = mock_ext
 
-        # QA agent raises an error
-        mock_qa = AsyncMock()
-        mock_qa.run = AsyncMock(side_effect=Exception("QA service unavailable"))
-        mock_qa_cls.return_value = mock_qa
+        # QA raises an error
+        mock_run_qa.side_effect = Exception("QA service unavailable")
 
-        from kb_manager.schemas.ingest import ConfirmRequest
-
-        await pipeline.run_process(job_id, ConfirmRequest())
+        await pipeline.run_process(job_id)
 
         # Job should still be completed, not failed
         mock_jobs.update_job_status.assert_called_once_with(
@@ -612,7 +608,9 @@ async def test_upload_process_completes():
 
     with patch("kb_manager.services.pipeline.job_queries") as mock_jobs, \
          patch("kb_manager.services.pipeline.file_queries") as mock_files, \
-         patch("kb_manager.services.pipeline.QAAgent") as mock_qa_cls:
+         patch("kb_manager.services.pipeline.QAAgent") as mock_qa_cls, \
+         patch("kb_manager.services.pipeline.UniquenessAgent") as mock_uq_cls, \
+         patch("kb_manager.services.pipeline.run_qa_and_uniqueness") as mock_run_qa:
 
         mock_jobs.get_job = AsyncMock(return_value=fake_job)
         mock_jobs.update_job = AsyncMock()
@@ -622,9 +620,7 @@ async def test_upload_process_completes():
         mock_files.update_file = AsyncMock()
         mock_files.get_file = AsyncMock(return_value=fake_kb_file)
 
-        mock_qa = AsyncMock()
-        mock_qa.run = AsyncMock(return_value=FakeQAResult())
-        mock_qa_cls.return_value = mock_qa
+        mock_run_qa.return_value = FakeQAResult()
 
         await pipeline.run_upload_process(job_id, [mock_upload])
 
@@ -689,15 +685,15 @@ async def test_versioning_skip_skips_source_page():
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     with patch("kb_manager.services.pipeline.job_queries") as mock_jobs, \
-         patch("kb_manager.services.pipeline.link_queries") as mock_links, \
          patch("kb_manager.services.pipeline.ExtractorAgent") as mock_ext_cls, \
          patch("kb_manager.services.pipeline.QAAgent") as mock_qa_cls, \
+         patch("kb_manager.services.pipeline.UniquenessAgent") as mock_uq_cls, \
+         patch("kb_manager.services.pipeline.run_qa_and_uniqueness") as mock_run_qa, \
          patch("kb_manager.services.pipeline.httpx.AsyncClient") as mock_client_cls:
 
         mock_jobs.get_job = AsyncMock(return_value=fake_job)
         mock_jobs.update_job = AsyncMock()
         mock_jobs.update_job_status = AsyncMock()
-        mock_links.get_links_by_job = AsyncMock(return_value=[])
 
         # Mock httpx for source page fetch
         mock_client = AsyncMock()
@@ -714,12 +710,9 @@ async def test_versioning_skip_skips_source_page():
         mock_ext.run = AsyncMock(return_value=[])
         mock_ext_cls.return_value = mock_ext
 
-        mock_qa = AsyncMock()
-        mock_qa_cls.return_value = mock_qa
+        mock_run_qa.return_value = FakeQAResult()
 
-        from kb_manager.schemas.ingest import ConfirmRequest
-
-        await pipeline.run_process(job_id, ConfirmRequest())
+        await pipeline.run_process(job_id)
 
         # Extractor should NOT have been called since source was skipped
         mock_ext.run.assert_not_called()
@@ -789,16 +782,16 @@ async def test_versioning_process_deletes_old_s3_key():
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     with patch("kb_manager.services.pipeline.job_queries") as mock_jobs, \
-         patch("kb_manager.services.pipeline.link_queries") as mock_links, \
          patch("kb_manager.services.pipeline.file_queries") as mock_files, \
          patch("kb_manager.services.pipeline.ExtractorAgent") as mock_ext_cls, \
          patch("kb_manager.services.pipeline.QAAgent") as mock_qa_cls, \
+         patch("kb_manager.services.pipeline.UniquenessAgent") as mock_uq_cls, \
+         patch("kb_manager.services.pipeline.run_qa_and_uniqueness") as mock_run_qa, \
          patch("kb_manager.services.pipeline.httpx.AsyncClient") as mock_client_cls:
 
         mock_jobs.get_job = AsyncMock(return_value=fake_job)
         mock_jobs.update_job = AsyncMock()
         mock_jobs.update_job_status = AsyncMock()
-        mock_links.get_links_by_job = AsyncMock(return_value=[])
 
         mock_files.create_file = AsyncMock(return_value=fake_kb_file)
         mock_files.update_file = AsyncMock()
@@ -819,13 +812,9 @@ async def test_versioning_process_deletes_old_s3_key():
         mock_ext.run = AsyncMock(return_value=[FakeExtractedFile()])
         mock_ext_cls.return_value = mock_ext
 
-        mock_qa = AsyncMock()
-        mock_qa.run = AsyncMock(return_value=FakeQAResult())
-        mock_qa_cls.return_value = mock_qa
+        mock_run_qa.return_value = FakeQAResult()
 
-        from kb_manager.schemas.ingest import ConfirmRequest
-
-        await pipeline.run_process(job_id, ConfirmRequest())
+        await pipeline.run_process(job_id)
 
         # S3 delete should have been called with the old file's key
         pipeline._s3.delete.assert_called_with("public/avis/nam/old-page/old-file.md")
@@ -835,11 +824,11 @@ async def test_versioning_process_deletes_old_s3_key():
 
 @pytest.mark.asyncio
 async def test_versioning_skip_skips_sibling_link():
-    """When versioning returns 'skip' for a sibling link, that link should be skipped."""
+    """When versioning returns 'skip' for the source page, processing is skipped entirely."""
     sm = StreamManager()
     pipeline = _make_pipeline(sm)
 
-    # First call (source page) returns "process", second call (sibling) returns "skip"
+    # First call (source page) returns "process", second call returns "skip"
     pipeline._versioning.check_and_supersede = AsyncMock(
         side_effect=["process", "skip"]
     )
@@ -867,11 +856,6 @@ async def test_versioning_skip_skips_sibling_link():
     )
     fake_kb_file = FakeKBFile()
 
-    sibling_link = FakeContentLink(
-        classification="sibling",
-        target_url="https://example.com/sibling-page",
-    )
-
     mock_db = AsyncMock()
     mock_db.commit = AsyncMock()
     mock_session_ctx = AsyncMock()
@@ -887,17 +871,16 @@ async def test_versioning_skip_skips_sibling_link():
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     with patch("kb_manager.services.pipeline.job_queries") as mock_jobs, \
-         patch("kb_manager.services.pipeline.link_queries") as mock_links, \
          patch("kb_manager.services.pipeline.file_queries") as mock_files, \
          patch("kb_manager.services.pipeline.ExtractorAgent") as mock_ext_cls, \
          patch("kb_manager.services.pipeline.QAAgent") as mock_qa_cls, \
+         patch("kb_manager.services.pipeline.UniquenessAgent") as mock_uq_cls, \
+         patch("kb_manager.services.pipeline.run_qa_and_uniqueness") as mock_run_qa, \
          patch("kb_manager.services.pipeline.httpx.AsyncClient") as mock_client_cls:
 
         mock_jobs.get_job = AsyncMock(return_value=fake_job)
         mock_jobs.update_job = AsyncMock()
         mock_jobs.update_job_status = AsyncMock()
-        mock_links.get_links_by_job = AsyncMock(return_value=[sibling_link])
-        mock_links.update_link = AsyncMock()
 
         mock_files.create_file = AsyncMock(return_value=fake_kb_file)
         mock_files.update_file = AsyncMock()
@@ -915,23 +898,16 @@ async def test_versioning_skip_skips_sibling_link():
         mock_client_cls.return_value = mock_client
 
         mock_ext = AsyncMock()
-        # Source page extraction returns one file, sibling should be skipped
+        # Source page extraction returns one file
         mock_ext.run = AsyncMock(return_value=[FakeExtractedFile()])
         mock_ext_cls.return_value = mock_ext
 
-        mock_qa = AsyncMock()
-        mock_qa.run = AsyncMock(return_value=FakeQAResult())
-        mock_qa_cls.return_value = mock_qa
+        mock_run_qa.return_value = FakeQAResult()
 
-        from kb_manager.schemas.ingest import ConfirmRequest
+        await pipeline.run_process(job_id)
 
-        await pipeline.run_process(job_id, ConfirmRequest())
-
-        # Extractor should have been called only once (for source page, not sibling)
+        # Extractor should have been called only once (for source page)
         assert mock_ext.run.call_count == 1
-
-        # Sibling link should NOT have been marked as ingested
-        mock_links.update_link.assert_not_called()
 
     await task
 

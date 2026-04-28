@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FileText, CheckCircle2, Clock, FileEdit, Plus, Download } from "lucide-react";
+import { FileText, CheckCircle2, FileEdit, Plus, Download } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { DataTable, Table, Thead, Th, Tbody, Tr, Td, EmptyRow } from "@/components/ui/Table";
@@ -53,6 +53,17 @@ export default function KnowledgeLibrary() {
       }),
   });
 
+  // Exclude pending_review and rejected files from default view
+  // pending_review → belongs in Review & Governance
+  // rejected → accessible via "Rejected" status filter
+  const filteredFiles = useMemo(() => {
+    if (!filesQ.data) return undefined;
+    if (status) return filesQ.data; // explicit filter, show as-is
+    const hidden = new Set(["pending_review", "rejected"]);
+    const items = filesQ.data.items.filter((f) => !hidden.has(f.status));
+    return { ...filesQ.data, items, total: items.length };
+  }, [filesQ.data, status]);
+
   // Reset to page 1 when filters change
   const resetAnd = <T,>(setter: (v: T) => void) => (v: T) => {
     setter(v);
@@ -91,13 +102,11 @@ export default function KnowledgeLibrary() {
             <SkeletonKpi />
             <SkeletonKpi />
             <SkeletonKpi />
-            <SkeletonKpi />
           </>
         ) : (
           <>
             <KpiCard label="Total Articles" value={fmtNum(statsQ.data?.total_files)} icon={FileText} />
             <KpiCard label="Published" value={fmtNum(statsQ.data?.approved)} icon={CheckCircle2} />
-            <KpiCard label="In Review" value={fmtNum(statsQ.data?.pending_review)} icon={Clock} />
             <KpiCard label="Drafts" value={fmtNum(drafts.length)} icon={FileEdit} hint="local drafts" />
           </>
         )}
@@ -117,10 +126,9 @@ export default function KnowledgeLibrary() {
             <div className="min-w-[180px]">
               <Label>Status</Label>
               <Select value={status} onChange={(e) => resetAnd(setStatus)(e.target.value)}>
-                <option value="">All statuses</option>
-                <option value="pending_review">Pending review</option>
+                <option value="">Active</option>
                 <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
+                <option value="rejected">Rejected / Archived</option>
                 <option value="superseded">Superseded</option>
               </Select>
             </div>
@@ -152,10 +160,10 @@ export default function KnowledgeLibrary() {
             <Tbody>
               {filesQ.isLoading &&
                 Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} cols={7} />)}
-              {!filesQ.isLoading && filesQ.data?.items.length === 0 && (
+              {!filesQ.isLoading && filteredFiles?.items.length === 0 && (
                 <EmptyRow colSpan={7} message="No files match your filters." />
               )}
-              {filesQ.data?.items.map((f) => (
+              {filteredFiles?.items.map((f) => (
                 <Tr
                   key={f.id}
                   className="cursor-pointer"
@@ -192,11 +200,11 @@ export default function KnowledgeLibrary() {
             </Tbody>
           </Table>
 
-          {filesQ.data && (
+          {filteredFiles && (
             <Pagination
               page={page}
               size={size}
-              total={filesQ.data.total}
+              total={filteredFiles.total}
               onPage={setPage}
             />
           )}

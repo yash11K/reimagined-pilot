@@ -34,7 +34,7 @@ async def _upload_to_s3(
     s3_uploader: S3Uploader,
     session_factory: async_sessionmaker,
 ) -> None:
-    """Upload an approved file to S3 and update its s3_key."""
+    """Upload an approved file to S3 and update its s3_key, then trigger KB sync."""
     try:
         async with session_factory() as db:
             kb_file = await file_queries.get_file(db, file_id)
@@ -45,6 +45,16 @@ async def _upload_to_s3(
             if s3_key:
                 await file_queries.update_file(db, file_id, s3_key=s3_key)
                 await db.commit()
+
+                # Trigger Bedrock KB sync after successful upload
+                try:
+                    from kb_manager.services.bedrock_kb import BedrockKBClient
+                    client = BedrockKBClient()
+                    ingestion_id = client.start_sync()
+                    if ingestion_id:
+                        logger.info("🔄 KB sync triggered after approve upload — ingestionJobId=%s", ingestion_id)
+                except Exception:
+                    logger.warning("⚠️ KB sync trigger failed after approve upload — non-fatal", exc_info=True)
     except Exception:
         logger.exception("💥 S3 upload failed for file %s", file_id)
 
@@ -53,9 +63,9 @@ async def _run_qa_background(
     file_id: uuid.UUID,
     session_factory: async_sessionmaker,
 ) -> None:
-    """Re-run QA on a file and update verdicts via the routing matrix."""
+    """Re-run QA + Uniqueness on a file and update verdicts via the routing matrix."""
     try:
-        from kb_manager.agents.qa import QAAgent
+        from kb_manager.agents.qa import run_qa_and_uniqueness
         from kb_manager.services.routing_matrix import route_file
 
         async with session_factory() as db:
@@ -63,14 +73,13 @@ async def _run_qa_background(
             if kb_file is None:
                 return
 
-            qa_agent = QAAgent()
             qa_metadata = {
                 "title": kb_file.title,
                 "source_url": kb_file.source_url,
                 "region": kb_file.region,
                 "brand": kb_file.brand,
             }
-            qa_result = await qa_agent.run(kb_file.md_content, metadata=qa_metadata)
+            qa_result = await run_qa_and_uniqueness(kb_file.md_content, metadata=qa_metadata)
 
             metadata_complete = all([
                 kb_file.title,
@@ -156,21 +165,20 @@ def _file_to_detail(file, similar_files: list[SimilarFile], source_refs: list[So
 
 
 async def _run_qa_sync(file_id: uuid.UUID, db: AsyncSession) -> None:
-    from kb_manager.agents.qa import QAAgent
+    from kb_manager.agents.qa import run_qa_and_uniqueness
     from kb_manager.services.routing_matrix import route_file
 
     kb_file = await file_queries.get_file(db, file_id)
     if kb_file is None:
         return
 
-    qa_agent = QAAgent()
     qa_metadata = {
         "title": kb_file.title,
         "source_url": kb_file.source_url,
         "region": kb_file.region,
         "brand": kb_file.brand,
     }
-    qa_result = await qa_agent.run(kb_file.md_content, metadata=qa_metadata)
+    qa_result = await run_qa_and_uniqueness(kb_file.md_content, metadata=qa_metadata)
 
     metadata_complete = all([
         kb_file.title,

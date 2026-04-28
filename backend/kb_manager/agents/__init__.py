@@ -9,7 +9,12 @@ from kb_manager.agents.discovery import (
 )
 from kb_manager.agents.link_triage import LinkTriageAgent, TriageResult
 from kb_manager.agents.extractor import ExtractorAgent, ExtractedFile
-from kb_manager.agents.qa import QAAgent, QAResult
+from kb_manager.agents.qa import (
+    QAAgent,
+    QAResult,
+    UniquenessAgent,
+    run_qa_and_uniqueness,
+)
 
 __all__ = [
     "ClassifiedLink",
@@ -23,4 +28,6 @@ __all__ = [
     "ExtractedFile",
     "QAAgent",
     "QAResult",
+    "UniquenessAgent",
+    "run_qa_and_uniqueness",
 ]

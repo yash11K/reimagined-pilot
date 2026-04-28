@@ -1,4 +1,4 @@
-"""Request/response schemas for the knowledge base search and chat API."""
+"""Request/response schemas for the knowledge base search, chat, and sync API."""
 
 from pydantic import BaseModel
 
@@ -23,3 +23,10 @@ class DownloadRequest(BaseModel):
     """Request body for POST /kb/download."""
 
     s3_uri: str
+
+
+class SyncResponse(BaseModel):
+    """Response body for POST /kb/sync."""
+
+    ingestion_job_id: str
+    status: str

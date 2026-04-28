@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     BEDROCK_MODEL_ID: str = "us.anthropic.claude-sonnet-4-20250514-v1:0"
     HAIKU_MODEL_ID: str = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     BEDROCK_KB_ID: str | None = None
+    BEDROCK_DS_ID: str | None = None  # Data source ID for KB sync
     BEDROCK_MAX_TOKENS: int = 16000
     HAIKU_MAX_TOKENS: int = 8192
     AEM_REQUEST_TIMEOUT: int = 30

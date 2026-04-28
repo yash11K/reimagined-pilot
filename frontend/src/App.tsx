@@ -6,6 +6,8 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import ExecutiveDashboard from "@/pages/ExecutiveDashboard";
 import SearchOperations from "@/pages/SearchOperations";
+import SearchAnalytics from "@/pages/search-ops/Analytics";
+import KbPlayground from "@/pages/search-ops/KbPlayground";
 import DiscoveryTools from "@/pages/DiscoveryTools";
 import KnowledgeLibrary from "@/pages/KnowledgeLibrary";
 import FileDetail from "@/pages/FileDetail";
@@ -36,7 +38,11 @@ export default function App() {
             <Routes>
               <Route element={<AppLayout />}>
                 <Route index element={<ExecutiveDashboard />} />
-                <Route path="search-operations" element={<SearchOperations />} />
+                <Route path="search-operations" element={<SearchOperations />}>
+                  <Route index element={<Navigate to="analytics" replace />} />
+                  <Route path="analytics" element={<SearchAnalytics />} />
+                  <Route path="playground" element={<KbPlayground />} />
+                </Route>
                 <Route path="discovery-tools" element={<DiscoveryTools />} />
                 <Route path="knowledge-library" element={<KnowledgeLibrary />} />
                 <Route path="knowledge-library/:id" element={<FileDetail />} />

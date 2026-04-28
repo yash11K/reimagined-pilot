@@ -29,7 +29,9 @@ from kb_manager.agents import (
     DiscoveryAgent,
     ExtractorAgent,
     QAAgent,
+    UniquenessAgent,
 )
+from kb_manager.agents.qa import run_qa_and_uniqueness
 from kb_manager.config import get_settings
 from kb_manager.models import KBFile, Source
 from kb_manager.queries import files as file_queries
@@ -77,7 +79,26 @@ class Pipeline:
         self._versioning = versioning_service
         self._session_factory = session_factory
         self._settings = settings
+
+        # Lazy-init Bedrock KB client for post-upload sync
+        self._kb_client = None
         logger.info("🔧 Pipeline initialised")
+
+    def _get_kb_client(self):
+        if self._kb_client is None:
+            from kb_manager.services.bedrock_kb import BedrockKBClient
+            self._kb_client = BedrockKBClient()
+        return self._kb_client
+
+    def _trigger_kb_sync(self, context: str = "") -> None:
+        """Trigger a Bedrock KB data-source sync if configured."""
+        try:
+            client = self._get_kb_client()
+            ingestion_id = client.start_sync()
+            if ingestion_id:
+                logger.info("🔄 KB sync triggered after %s — ingestionJobId=%s", context, ingestion_id)
+        except Exception:
+            logger.warning("⚠️ KB sync trigger failed after %s — non-fatal, continuing", context, exc_info=True)
 
     # ------------------------------------------------------------------
     # Scout phase
@@ -428,6 +449,7 @@ class Pipeline:
 
                 extractor = ExtractorAgent()
                 qa_agent = QAAgent()
+                uniqueness_agent = UniquenessAgent()
 
                 files_created = 0
                 files_approved = 0
@@ -470,7 +492,8 @@ class Pipeline:
                         if not ef.source_url:
                             ef.source_url = source.url.replace(".model.json", "")
                         result = await self._process_single_file(
-                            db, job, [source.id], ef, qa_agent, job_id_str,
+                            db, job, [source.id], ef,
+                            qa_agent, uniqueness_agent, job_id_str,
                             modify_date=modify_date,
                         )
                         files_created += 1
@@ -498,6 +521,10 @@ class Pipeline:
                 },
             )
             await self._stream.close_channel(job_id_str, "progress")
+
+            # Trigger KB sync if any files were uploaded to S3
+            if files_approved > 0:
+                self._trigger_kb_sync(context=f"run_process job={job_id_str[:8]}")
 
             elapsed = (time.perf_counter() - t0) * 1000
             logger.info("✅ [job=%s] Process DONE in %.1fms — created=%d, approved=%d, review=%d, rejected=%d",
@@ -530,6 +557,7 @@ class Pipeline:
 
                 source = job.source
                 qa_agent = QAAgent()
+                uniqueness_agent = UniquenessAgent()
 
                 await self._stream.publish(
                     job_id_str, "progress", "extraction_started",
@@ -563,7 +591,8 @@ class Pipeline:
                         )
 
                         result = await self._process_single_file(
-                            db, job, [source.id], ef, qa_agent, job_id_str,
+                            db, job, [source.id], ef,
+                            qa_agent, uniqueness_agent, job_id_str,
                         )
                         files_created += 1
                         if result == "approved":
@@ -587,6 +616,10 @@ class Pipeline:
                 {"job_id": job_id_str, "files_created": files_created},
             )
             await self._stream.close_channel(job_id_str, "progress")
+
+            # Trigger KB sync if any files were uploaded to S3
+            if files_approved > 0:
+                self._trigger_kb_sync(context=f"run_upload_process job={job_id_str[:8]}")
 
         except Exception as exc:
             logger.exception("💥 [job=%s] Upload FAILED: %s", job_id_str[:8], exc)
@@ -642,10 +675,11 @@ class Pipeline:
         source_ids: list[uuid.UUID],
         extracted_file: Any,
         qa_agent: QAAgent,
+        uniqueness_agent: UniquenessAgent,
         job_id_str: str,
         modify_date: datetime | None = None,
     ) -> str:
-        """Run QA, route, optionally upload a single extracted file.
+        """Run QA + Uniqueness, route, optionally upload a single extracted file.
 
         Links ALL source_ids to the produced KBFile via M2M junction.
         """
@@ -677,14 +711,19 @@ class Pipeline:
                 {"file_id": str(kb_file.id), "title": kb_file.title},
             )
 
-            # QA
+            # QA + Uniqueness
             qa_metadata = {
                 "title": extracted_file.title,
                 "source_url": extracted_file.source_url,
                 "region": extracted_file.region or (job.source.region if job.source else None),
                 "brand": extracted_file.brand or (job.source.brand if job.source else None),
             }
-            qa_result = await qa_agent.run(extracted_file.md_content, metadata=qa_metadata)
+            qa_result = await run_qa_and_uniqueness(
+                extracted_file.md_content,
+                metadata=qa_metadata,
+                qa_agent=qa_agent,
+                uniqueness_agent=uniqueness_agent,
+            )
 
             metadata_complete = all([
                 extracted_file.title,

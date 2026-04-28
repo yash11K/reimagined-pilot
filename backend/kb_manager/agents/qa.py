@@ -1,8 +1,16 @@
-"""QA Agent — assesses quality, uniqueness, and metadata completeness of extracted files."""
+"""QA & Uniqueness agents — assess ingestion worthiness and KB overlap of extracted files.
+
+Two independent Strands agents:
+  • QAAgent — decides whether a markdown file is worth ingesting as a standalone KB article.
+  • UniquenessAgent — compares the file against existing KB content and classifies overlap.
+
+Both agents share a single `QAResult` dataclass consumed by the routing matrix and pipeline.
+"""
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -15,87 +23,66 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Pydantic model for structured output
+# Shared result dataclass (consumed by pipeline + routing matrix)
 # ---------------------------------------------------------------------------
-
-class QAOutput(BaseModel):
-    """Structured output from the QA Agent."""
-    quality_verdict: Literal["good", "acceptable", "poor"] = "acceptable"
-    quality_reasoning: str = ""
-    uniqueness_verdict: Literal["unique", "overlapping", "duplicate"] = "unique"
-    uniqueness_reasoning: str = ""
-    similar_file_ids: list[str] = Field(default_factory=list)
-
-
-# ---------------------------------------------------------------------------
-# Dataclass used by the rest of the app
-# ---------------------------------------------------------------------------
-
-from dataclasses import dataclass, field
-
-@dataclass
-class SimilarDoc:
-    file_id: str
-    title: str
-    score: float
 
 @dataclass
 class QAResult:
-    quality_verdict: str  # good | acceptable | poor
+    """Combined output from the QA and Uniqueness agents."""
+
+    quality_verdict: str          # accepted | rejected
     quality_reasoning: str
-    uniqueness_verdict: str  # unique | overlapping | duplicate
+    uniqueness_verdict: str       # unique | overlapping | conflicting
     uniqueness_reasoning: str
     similar_file_ids: list[str] = field(default_factory=list)
 
 
-# ---------------------------------------------------------------------------
-# KB query tool
-# ---------------------------------------------------------------------------
+# ═══════════════════════════════════════════════════════════════════════════
+# QA Agent — ingestion worthiness
+# ═══════════════════════════════════════════════════════════════════════════
 
-@tool
-def query_kb(content_snippet: str, limit: int = 3) -> list[dict]:
-    """Query the Bedrock knowledge base for similar documents.
+class QAOutput(BaseModel):
+    """Structured output from the QA Agent."""
 
-    Args:
-        content_snippet: A representative snippet of the file content to search for.
-        limit: Maximum number of similar documents to return.
-    """
-    settings = get_settings()
-    if not settings.BEDROCK_KB_ID:
-        logger.debug("🔍 KB query skipped — BEDROCK_KB_ID not configured")
-        return []
-    logger.info("🔍 Querying Bedrock KB (id=%s) for similar docs (limit=%d)",
-                settings.BEDROCK_KB_ID, limit)
-    # Stub: real implementation will call Bedrock KB retrieve API
-    return []
+    verdict: Literal["accepted", "rejected"] = "accepted"
+    reasoning: str = ""
 
 
-SYSTEM_PROMPT = (
-    "You are a quality assurance agent for knowledge base files extracted from AEM websites. "
-    "You will receive the markdown content AND metadata as separate inputs.\n\n"
-    "Assess the provided markdown file on two independent axes:\n\n"
-    "1. QUALITY — assess based on content completeness and structure:\n"
-    "   - good: 300+ words of substantive content, well-structured with headings, "
-    "coherent and informative. Includes details like pricing, features, terms, or regional data.\n"
-    "   - acceptable: useful content but thin (under 300 words) or poorly structured. "
-    "Still contains real information a customer would find helpful.\n"
-    "   - poor: near-empty, gibberish, pure navigation/breadcrumbs with no real content, "
-    "or only boilerplate text with no product/service information.\n\n"
-    "2. UNIQUENESS — use the query_kb tool to search for similar docs, then classify:\n"
-    "   - unique: no meaningful overlap with existing KB content.\n"
-    "   - overlapping: partial overlap but adds new information not in existing docs.\n"
-    "   - duplicate: near-identical content already exists in the KB.\n\n"
-    "IMPORTANT UNIQUENESS RULES:\n"
-    "- A detail page is NOT a duplicate of a listing page that contains a teaser for it. "
-    "The detail page is the canonical source; the listing page teaser is the summary.\n"
-    "- If a file has a specific source_url pointing to a detail sub-page (e.g. /products/mobile-wifi), "
-    "it should be considered unique even if a parent listing page mentions the same product briefly.\n"
-    "- Only mark as 'duplicate' if another file covers the SAME topic with the SAME level of detail."
-)
+QA_SYSTEM_PROMPT = """\
+You are a strict quality-gate agent for a customer-facing knowledge base.
+
+Your sole job is to decide whether a given markdown file is worth ingesting \
+into the knowledge base as a standalone article. You are NOT judging writing \
+style or grammar — you are judging whether the content carries real, \
+actionable information that would help a customer or support agent.
+
+## Decision criteria
+
+ACCEPT the file when ALL of the following are true:
+  • The content is coherent and readable as a standalone document.
+  • It contains substantive information — product details, service terms, \
+pricing, how-to steps, policy explanations, regional specifics, or similar.
+  • A customer or support agent would gain value from finding this article.
+
+REJECT the file when ANY of the following are true:
+  • The content is mostly navigation elements, breadcrumbs, or site chrome \
+with no real information.
+  • It is gibberish, garbled encoding artefacts, or placeholder/lorem-ipsum text.
+  • It is a near-empty stub (e.g. just a title and one generic sentence).
+  • It duplicates boilerplate that appears on every page (footers, cookie \
+banners, legal disclaimers that are not the primary content).
+  • It is a pure listing/index page with only links and no explanatory content.
+
+## Output rules
+  • Return exactly one verdict: "accepted" or "rejected".
+  • Provide a concise reasoning (1-3 sentences) explaining your decision.
+  • Focus on WHAT the content is about and WHY it does or does not qualify — \
+do not comment on length alone.
+"""
 
 
 class QAAgent:
-    """Assesses quality and uniqueness of extracted markdown files using Haiku."""
+    """Decides whether a markdown file is worth ingesting into the KB."""
 
     def __init__(self) -> None:
         settings = get_settings()
@@ -106,7 +93,148 @@ class QAAgent:
         )
         self._agent = Agent(
             model=model,
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=QA_SYSTEM_PROMPT,
+        )
+
+    async def run(
+        self,
+        md_content: str,
+        metadata: dict[str, str | None] | None = None,
+    ) -> QAOutput:
+        """Assess whether *md_content* is worth ingesting.
+
+        Args:
+            md_content: Pure markdown content (no YAML frontmatter).
+            metadata: Optional dict with title, source_url, region, brand.
+        """
+        content_len = len(md_content)
+        logger.info("🧪 QA Agent running — content_length=%d chars", content_len)
+
+        parts = ["Assess this markdown file for knowledge-base ingestion.\n"]
+        if metadata:
+            parts.append("Metadata:\n" + "\n".join(
+                f"  {k}: {v}" for k, v in metadata.items() if v
+            ) + "\n")
+        parts.append(f"```markdown\n{md_content}\n```")
+        prompt = "\n".join(parts)
+
+        result = await self._agent.invoke_async(
+            prompt, structured_output_model=QAOutput,
+        )
+
+        output: QAOutput | None = getattr(result, "structured_output", None)
+        if output is None:
+            logger.warning("⚠️ QA Agent returned no structured output — defaulting to accepted")
+            return QAOutput(
+                verdict="accepted",
+                reasoning="Failed to get structured output from agent; defaulting to accepted.",
+            )
+
+        logger.info("🧪 QA Agent finished — verdict=%s", output.verdict)
+        return output
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Uniqueness Agent — KB overlap assessment
+# ═══════════════════════════════════════════════════════════════════════════
+
+class UniquenessOutput(BaseModel):
+    """Structured output from the Uniqueness Agent."""
+
+    verdict: Literal["unique", "overlapping", "conflicting"] = "unique"
+    reasoning: str = ""
+    similar_file_ids: list[str] = Field(default_factory=list)
+
+
+@tool
+def query_kb(content_snippet: str, limit: int = 3) -> list[dict]:
+    """Query the Bedrock knowledge base for documents similar to *content_snippet*.
+
+    Args:
+        content_snippet: A representative snippet of the file content to search for.
+        limit: Maximum number of similar documents to return.
+
+    Returns:
+        A list of dicts, each with keys: file_id, title, score, snippet.
+        Returns an empty list when the KB is not configured or no matches are found.
+    """
+    settings = get_settings()
+    if not settings.BEDROCK_KB_ID:
+        logger.debug("🔍 KB query skipped — BEDROCK_KB_ID not configured")
+        return []
+    logger.info(
+        "🔍 Querying Bedrock KB (id=%s) for similar docs (limit=%d)",
+        settings.BEDROCK_KB_ID, limit,
+    )
+    # TODO: Wire to Bedrock KB retrieve API.
+    # When implemented, this should:
+    #   1. Call bedrock-agent-runtime RetrieveAndGenerate or Retrieve with content_snippet.
+    #   2. Return results with file_id (from S3 key or metadata), title, relevance score,
+    #      and a text snippet so the agent can compare content.
+    #   3. Include source_url in results so the agent can apply the detail-vs-listing rule.
+    return []
+
+
+UNIQUENESS_SYSTEM_PROMPT = """\
+You are a uniqueness assessment agent for a customer-facing knowledge base.
+
+You will receive a markdown file (with optional metadata) that is a candidate \
+for ingestion. Your job is to determine how this file relates to content \
+already in the knowledge base by using the `query_kb` tool.
+
+## Workflow
+1. Read the candidate file's content and metadata.
+2. Use the `query_kb` tool with a representative snippet (first ~500 chars of \
+substantive content) to find similar existing documents.
+3. If `query_kb` returns no results, classify as "unique".
+4. If results are returned, carefully compare the candidate against each match.
+
+## Verdicts
+
+**unique** — No meaningful overlap with existing KB content. The candidate \
+covers a topic, product, region, or level of detail not already present.
+
+**overlapping** — Partial overlap exists, but the candidate adds new \
+information not found in existing documents. This is acceptable — the file \
+should still be ingested. Examples:
+  • A detail page for a product when only a listing-page teaser exists.
+  • Same product but for a different region with region-specific terms.
+  • Updated pricing or features not reflected in the existing article.
+
+**conflicting** — The candidate contains information that directly contradicts \
+existing KB content on the same topic. Examples:
+  • Different pricing for the same product and region.
+  • Contradictory eligibility criteria or terms.
+  • Incompatible feature descriptions for the same service.
+When marking as conflicting, you MUST list the file_ids of the conflicting \
+documents in `similar_file_ids` so they can be reviewed together.
+
+## Important rules
+  • A detail page is NEVER a duplicate of a listing page that merely teasers \
+it. The detail page is the canonical source; the listing page teaser is a \
+summary. Classify as "unique" or "overlapping", not "conflicting".
+  • If a file has a specific source_url pointing to a detail sub-page \
+(e.g. /products/mobile-wifi), it should be considered unique even if a parent \
+listing page mentions the same product briefly.
+  • Only mark as "conflicting" when there is a genuine factual contradiction, \
+not merely overlapping coverage of the same topic.
+  • When the KB query returns no results (empty list), always return "unique".
+"""
+
+
+class UniquenessAgent:
+    """Compares a candidate file against existing KB content for overlap/conflicts."""
+
+    def __init__(self) -> None:
+        settings = get_settings()
+        logger.info("🔎 Initialising Uniqueness Agent (model=%s)", settings.HAIKU_MODEL_ID)
+        model = BedrockModel(
+            model_id=settings.HAIKU_MODEL_ID,
+            max_tokens=settings.HAIKU_MAX_TOKENS,
+        )
+        self._agent = Agent(
+            model=model,
+            system_prompt=UNIQUENESS_SYSTEM_PROMPT,
             tools=[query_kb],
         )
 
@@ -114,44 +242,66 @@ class QAAgent:
         self,
         md_content: str,
         metadata: dict[str, str | None] | None = None,
-    ) -> QAResult:
-        """Assess quality and uniqueness of a markdown file.
+    ) -> UniquenessOutput:
+        """Assess uniqueness of *md_content* against the existing KB.
 
         Args:
             md_content: Pure markdown content (no YAML frontmatter).
-            metadata: Dict with title, source_url, region, brand for context.
+            metadata: Optional dict with title, source_url, region, brand.
         """
         content_len = len(md_content)
-        logger.info("🧪 QA Agent running — content_length=%d chars", content_len)
-        parts = ["Assess this markdown file.\n"]
+        logger.info("🔎 Uniqueness Agent running — content_length=%d chars", content_len)
+
+        parts = ["Assess this candidate file for uniqueness against the existing knowledge base.\n"]
         if metadata:
             parts.append("Metadata:\n" + "\n".join(
                 f"  {k}: {v}" for k, v in metadata.items() if v
             ) + "\n")
         parts.append(f"```markdown\n{md_content}\n```")
         prompt = "\n".join(parts)
+
         result = await self._agent.invoke_async(
-            prompt, structured_output_model=QAOutput,
+            prompt, structured_output_model=UniquenessOutput,
         )
 
-        output: QAOutput | None = getattr(result, "structured_output", None)
+        output: UniquenessOutput | None = getattr(result, "structured_output", None)
         if output is None:
-            logger.warning("⚠️ QA Agent returned no structured output, using defaults")
-            return QAResult(
-                quality_verdict="acceptable",
-                quality_reasoning="Failed to get structured output from agent",
-                uniqueness_verdict="unique",
-                uniqueness_reasoning="Failed to get structured output from agent",
-                similar_file_ids=[],
+            logger.warning("⚠️ Uniqueness Agent returned no structured output — defaulting to unique")
+            return UniquenessOutput(
+                verdict="unique",
+                reasoning="Failed to get structured output from agent; defaulting to unique.",
             )
 
-        qa = QAResult(
-            quality_verdict=output.quality_verdict,
-            quality_reasoning=output.quality_reasoning,
-            uniqueness_verdict=output.uniqueness_verdict,
-            uniqueness_reasoning=output.uniqueness_reasoning,
-            similar_file_ids=output.similar_file_ids or [],
-        )
-        logger.info("🧪 QA Agent finished — quality=%s, uniqueness=%s",
-                     qa.quality_verdict, qa.uniqueness_verdict)
-        return qa
+        logger.info("🔎 Uniqueness Agent finished — verdict=%s", output.verdict)
+        return output
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Combined runner — convenience for pipeline callers
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def run_qa_and_uniqueness(
+    md_content: str,
+    metadata: dict[str, str | None] | None = None,
+    *,
+    qa_agent: QAAgent | None = None,
+    uniqueness_agent: UniquenessAgent | None = None,
+) -> QAResult:
+    """Run both agents and return a unified `QAResult`.
+
+    Accepts optional pre-built agent instances so callers can reuse them
+    across multiple files within a single job.
+    """
+    qa = qa_agent or QAAgent()
+    uq = uniqueness_agent or UniquenessAgent()
+
+    qa_output = await qa.run(md_content, metadata=metadata)
+    uq_output = await uq.run(md_content, metadata=metadata)
+
+    return QAResult(
+        quality_verdict=qa_output.verdict,
+        quality_reasoning=qa_output.reasoning,
+        uniqueness_verdict=uq_output.verdict,
+        uniqueness_reasoning=uq_output.reasoning,
+        similar_file_ids=uq_output.similar_file_ids or [],
+    )

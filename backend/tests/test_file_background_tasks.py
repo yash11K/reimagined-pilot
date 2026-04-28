@@ -134,8 +134,8 @@ class TestRunQaBackground:
         mock_session_factory = MagicMock(return_value=mock_session_ctx)
 
         mock_qa_result = MagicMock(
-            quality_verdict="good",
-            quality_reasoning="Well structured",
+            quality_verdict="accepted",
+            quality_reasoning="Substantive content worth ingesting",
             uniqueness_verdict="unique",
             uniqueness_reasoning="No duplicates",
             similar_file_ids=[],
@@ -143,19 +143,16 @@ class TestRunQaBackground:
 
         with (
             patch("kb_manager.routes.files.file_queries") as mock_fq,
-            patch("kb_manager.agents.qa.QAAgent") as MockQA,
+            patch("kb_manager.agents.qa.run_qa_and_uniqueness", new_callable=AsyncMock, return_value=mock_qa_result) as mock_run_qa,
             patch("kb_manager.services.routing_matrix.route_file", return_value="approved") as mock_route,
         ):
             mock_fq.get_file = AsyncMock(return_value=mock_file)
             mock_fq.update_file = AsyncMock()
-            mock_qa_instance = AsyncMock()
-            mock_qa_instance.run = AsyncMock(return_value=mock_qa_result)
-            MockQA.return_value = mock_qa_instance
 
             await _run_qa_background(file_id, mock_session_factory)
 
-            mock_qa_instance.run.assert_called_once_with("# Test\nSome content")
-            mock_route.assert_called_once_with("good", "unique", True)
+            mock_run_qa.assert_called_once()
+            mock_route.assert_called_once_with("accepted", "unique", True)
             mock_fq.update_file.assert_called_once()
             mock_db.commit.assert_called_once()
 
@@ -216,8 +213,8 @@ class TestRunQaSync:
         mock_db = AsyncMock()
 
         mock_qa_result = MagicMock(
-            quality_verdict="acceptable",
-            quality_reasoning="Thin content",
+            quality_verdict="accepted",
+            quality_reasoning="Thin but useful content",
             uniqueness_verdict="overlapping",
             uniqueness_reasoning="Some overlap",
             similar_file_ids=[],
@@ -225,21 +222,18 @@ class TestRunQaSync:
 
         with (
             patch("kb_manager.routes.files.file_queries") as mock_fq,
-            patch("kb_manager.agents.qa.QAAgent") as MockQA,
-            patch("kb_manager.services.routing_matrix.route_file", return_value="pending_review"),
+            patch("kb_manager.agents.qa.run_qa_and_uniqueness", new_callable=AsyncMock, return_value=mock_qa_result) as mock_run_qa,
+            patch("kb_manager.services.routing_matrix.route_file", return_value="approved"),
         ):
             mock_fq.get_file = AsyncMock(return_value=mock_file)
             mock_fq.update_file = AsyncMock()
-            mock_qa_instance = AsyncMock()
-            mock_qa_instance.run = AsyncMock(return_value=mock_qa_result)
-            MockQA.return_value = mock_qa_instance
 
             await _run_qa_sync(file_id, mock_db)
 
             mock_fq.update_file.assert_called_once()
             call_kwargs = mock_fq.update_file.call_args
-            assert call_kwargs[1]["status"] == "pending_review"
-            assert call_kwargs[1]["quality_verdict"] == "acceptable"
+            assert call_kwargs[1]["status"] == "approved"
+            assert call_kwargs[1]["quality_verdict"] == "accepted"
 
     @pytest.mark.asyncio
     async def test_sync_qa_file_not_found(self):
