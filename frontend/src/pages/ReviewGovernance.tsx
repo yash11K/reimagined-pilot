@@ -11,6 +11,8 @@ import { listFiles, listSources, confirmSource } from "@/api/endpoints";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
+import { errorWithRef } from "@/lib/errorRef";
+import { useJobScoutStream } from "@/hooks/useJobScoutStream";
 import { fmtNum, fmtRelTime } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
@@ -47,16 +49,22 @@ export default function ReviewGovernance() {
       }),
   });
 
+  const scoutStream = useJobScoutStream();
+
   const confirmMut = useMutation({
     mutationFn: ({ id, action }: { id: string; action: "process" | "discard" }) =>
       confirmSource(id, { action, reviewed_by: user.id }),
-    onSuccess: (_data, vars) => {
+    onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: ["sources"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
-      if (vars.action === "process") toast.success("Ingesting", "Source queued");
-      else toast.info("Discarded");
+      if (vars.action === "process") {
+        toast.success("Ingesting", "Source queued");
+        if (data.job_id) scoutStream.attach(data.job_id);
+      } else {
+        toast.info("Discarded");
+      }
     },
-    onError: () => toast.error("Action failed"),
+    onError: (err: unknown) => toast.error("Action failed", errorWithRef(err)),
   });
 
   const filesCount = pendingFiles.data?.total ?? 0;

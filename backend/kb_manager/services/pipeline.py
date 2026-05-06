@@ -18,10 +18,9 @@ import logging
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
-from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -33,11 +32,15 @@ from kb_manager.agents import (
 )
 from kb_manager.agents.qa import run_qa_and_uniqueness
 from kb_manager.config import get_settings
+from kb_manager.logging_config import bind_log_context
 from kb_manager.models import KBFile, Source
 from kb_manager.queries import files as file_queries
 from kb_manager.queries import jobs as job_queries
 from kb_manager.queries import queue as queue_queries
 from kb_manager.queries import sources as source_queries
+
+if TYPE_CHECKING:
+    from kb_manager.services.bedrock_kb import BedrockKBClient
 from kb_manager.services.aem_pruner import (
     extract_links_deterministic,
     is_cross_domain,
@@ -72,6 +75,7 @@ class Pipeline:
         s3_uploader: S3Uploader,
         versioning_service: VersioningService,
         session_factory: async_sessionmaker[AsyncSession],
+        kb_client: "BedrockKBClient | None" = None,
     ) -> None:
         settings = get_settings()
         self._stream = stream_manager
@@ -80,21 +84,17 @@ class Pipeline:
         self._session_factory = session_factory
         self._settings = settings
 
-        # Lazy-init Bedrock KB client for post-upload sync
-        self._kb_client = None
+        # Bedrock KB client for post-upload sync. Injected by ``main.lifespan``;
+        # when not provided (e.g. some unit tests) sync is silently skipped.
+        self._kb_client = kb_client
         logger.info("🔧 Pipeline initialised")
 
-    def _get_kb_client(self):
-        if self._kb_client is None:
-            from kb_manager.services.bedrock_kb import BedrockKBClient
-            self._kb_client = BedrockKBClient()
-        return self._kb_client
-
-    def _trigger_kb_sync(self, context: str = "") -> None:
+    async def _trigger_kb_sync(self, context: str = "") -> None:
         """Trigger a Bedrock KB data-source sync if configured."""
+        if self._kb_client is None:
+            return
         try:
-            client = self._get_kb_client()
-            ingestion_id = client.start_sync()
+            ingestion_id = await self._kb_client.start_sync()
             if ingestion_id:
                 logger.info("🔄 KB sync triggered after %s — ingestionJobId=%s", context, ingestion_id)
         except Exception:
@@ -112,6 +112,7 @@ class Pipeline:
     ) -> None:
         """Phase 1: Fetch → Prune → Extract links → Discover+Classify → Queue certain links → Auto-process."""
         job_id_str = str(job_id)
+        bind_log_context(job_id=job_id_str[:8], phase="scout")
         t0 = time.perf_counter()
         logger.info("🔍 [job=%s] Scout STARTED for %s", job_id_str[:8], source_url)
 
@@ -426,6 +427,7 @@ class Pipeline:
     async def run_process(self, job_id: uuid.UUID) -> None:
         """Phase 2: Fetch single source page → Extract → QA → Route → Upload."""
         job_id_str = str(job_id)
+        bind_log_context(job_id=job_id_str[:8], phase="process")
         t0 = time.perf_counter()
         logger.info("⚙️ [job=%s] Process STARTED", job_id_str[:8])
 
@@ -524,7 +526,7 @@ class Pipeline:
 
             # Trigger KB sync if any files were uploaded to S3
             if files_approved > 0:
-                self._trigger_kb_sync(context=f"run_process job={job_id_str[:8]}")
+                await self._trigger_kb_sync(context=f"run_process job={job_id_str[:8]}")
 
             elapsed = (time.perf_counter() - t0) * 1000
             logger.info("✅ [job=%s] Process DONE in %.1fms — created=%d, approved=%d, review=%d, rejected=%d",
@@ -536,116 +538,24 @@ class Pipeline:
             await self._fail_job(job_id, str(exc), "progress")
 
     # ------------------------------------------------------------------
-    # Upload flow
-    # ------------------------------------------------------------------
-
-    async def run_upload_process(
-        self,
-        job_id: uuid.UUID,
-        files: list[UploadFile],
-    ) -> None:
-        """Upload flow: Parse → QA → Route → Upload approved → Complete."""
-        job_id_str = str(job_id)
-        t0 = time.perf_counter()
-        logger.info("📤 [job=%s] Upload process STARTED — %d files", job_id_str[:8], len(files))
-
-        try:
-            async with self._session_factory() as db:
-                job = await job_queries.get_job(db, job_id)
-                if job is None:
-                    raise ValueError(f"Job {job_id} not found")
-
-                source = job.source
-                qa_agent = QAAgent()
-                uniqueness_agent = UniquenessAgent()
-
-                await self._stream.publish(
-                    job_id_str, "progress", "extraction_started",
-                    {"job_id": job_id_str, "total_pages": len(files)},
-                )
-
-                files_created = 0
-                files_approved = 0
-                files_review = 0
-                files_rejected = 0
-
-                for idx, upload_file in enumerate(files):
-                    try:
-                        content = (await upload_file.read()).decode("utf-8")
-                        filename = upload_file.filename or f"upload_{idx}"
-                        await self._stream.publish(
-                            job_id_str, "progress", "page_processing",
-                            {"url": filename, "page_number": idx + 1, "total": len(files)},
-                        )
-
-                        title = filename.rsplit(".", 1)[0] if "." in filename else filename
-
-                        from kb_manager.agents.extractor import ExtractedFile
-                        ef = ExtractedFile(
-                            title=title,
-                            md_content=content,
-                            source_url=filename,
-                            content_type="upload",
-                            region=source.region,
-                            brand=source.brand,
-                        )
-
-                        result = await self._process_single_file(
-                            db, job, [source.id], ef,
-                            qa_agent, uniqueness_agent, job_id_str,
-                        )
-                        files_created += 1
-                        if result == "approved":
-                            files_approved += 1
-                        elif result == "pending_review":
-                            files_review += 1
-                        else:
-                            files_rejected += 1
-
-                    except Exception as exc:
-                        logger.warning("⚠️ [job=%s] Upload failed %s: %s",
-                                       job_id_str[:8], upload_file.filename, exc)
-                        files_rejected += 1
-
-                await job_queries.update_job_status(db, job_id, "completed")
-                await job_queries.update_job(db, job_id, progress_pct=100)
-                await db.commit()
-
-            await self._stream.publish(
-                job_id_str, "progress", "job_complete",
-                {"job_id": job_id_str, "files_created": files_created},
-            )
-            await self._stream.close_channel(job_id_str, "progress")
-
-            # Trigger KB sync if any files were uploaded to S3
-            if files_approved > 0:
-                self._trigger_kb_sync(context=f"run_upload_process job={job_id_str[:8]}")
-
-        except Exception as exc:
-            logger.exception("💥 [job=%s] Upload FAILED: %s", job_id_str[:8], exc)
-            await self._fail_job(job_id, str(exc), "progress")
-
-    # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
     @staticmethod
     def _extract_modify_date(aem_json: dict) -> datetime:
-        for key in ("jcr:lastModified", "cq:lastModified", "lastModified"):
-            val = aem_json.get(key)
-            if val:
+        jcr = aem_json.get("jcr:content")
+        candidates: list[dict] = [aem_json]
+        if isinstance(jcr, dict):
+            candidates.append(jcr)
+        for source in candidates:
+            for key in ("jcr:lastModified", "cq:lastModified", "lastModified"):
+                val = source.get(key)
+                if not val:
+                    continue
                 try:
                     return datetime.fromisoformat(val.replace("Z", "+00:00"))
                 except (ValueError, AttributeError):
-                    pass
-            jcr = aem_json.get("jcr:content", {})
-            if isinstance(jcr, dict):
-                val = jcr.get(key)
-                if val:
-                    try:
-                        return datetime.fromisoformat(val.replace("Z", "+00:00"))
-                    except (ValueError, AttributeError):
-                        pass
+                    continue
         return datetime.now(timezone.utc)
 
     async def _check_versioning_and_cleanup(
@@ -665,7 +575,7 @@ class Pipeline:
             result = await db.execute(stmt)
             superseded_file = result.scalars().first()
             if superseded_file and superseded_file.s3_key:
-                self._s3.delete(superseded_file.s3_key)
+                await self._s3.delete(superseded_file.s3_key)
         return decision
 
     async def _process_single_file(
@@ -685,6 +595,9 @@ class Pipeline:
         """
         file_title = getattr(extracted_file, "title", "unknown")
         primary_source_id = source_ids[0] if source_ids else None
+        # Sentinel — set after create_file succeeds so the except branch
+        # can reliably mark the row as rejected if anything below fails.
+        kb_file = None
         try:
             kb_file = await file_queries.create_file(
                 db,
@@ -763,24 +676,27 @@ class Pipeline:
             )
 
             if status == "approved":
-                kb_file = await file_queries.get_file(db, kb_file.id)
-                if kb_file:
-                    s3_key = self._s3.upload(kb_file)
+                refreshed = await file_queries.get_file(db, kb_file.id)
+                if refreshed:
+                    s3_key = await self._s3.upload(refreshed)
                     if s3_key:
-                        await file_queries.update_file(db, kb_file.id, s3_key=s3_key)
+                        await file_queries.update_file(db, refreshed.id, s3_key=s3_key)
 
             return status
 
         except Exception as exc:
             logger.warning("⚠️ [job=%s] File '%s' failed: %s", job_id_str[:8], file_title, exc)
-            try:
-                if "kb_file" in dir() and kb_file:
+            if kb_file is not None:
+                try:
                     await file_queries.update_file(
                         db, kb_file.id, status="rejected",
                         quality_reasoning=f"Processing error: {exc}",
                     )
-            except Exception:
-                pass
+                except Exception:
+                    logger.exception(
+                        "💥 [job=%s] Failed to mark file %s as rejected after error",
+                        job_id_str[:8], kb_file.id,
+                    )
             await self._stream.publish(
                 job_id_str, "progress", "error", {"message": f"File error: {exc}"},
             )

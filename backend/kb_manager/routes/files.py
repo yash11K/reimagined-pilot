@@ -1,7 +1,10 @@
 """Files API routes — list, detail, approve, reject, edit, revalidate."""
 
+from __future__ import annotations
+
 import logging
 import uuid
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -21,6 +24,9 @@ from kb_manager.schemas.files import (
 )
 from kb_manager.services.s3_uploader import S3Uploader
 
+if TYPE_CHECKING:
+    from kb_manager.services.bedrock_kb import BedrockKBClient
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -33,6 +39,7 @@ async def _upload_to_s3(
     file_id: uuid.UUID,
     s3_uploader: S3Uploader,
     session_factory: async_sessionmaker,
+    kb_client: "BedrockKBClient | None" = None,
 ) -> None:
     """Upload an approved file to S3 and update its s3_key, then trigger KB sync."""
     try:
@@ -41,20 +48,19 @@ async def _upload_to_s3(
             if kb_file is None:
                 return
 
-            s3_key = s3_uploader.upload(kb_file)
+            s3_key = await s3_uploader.upload(kb_file)
             if s3_key:
                 await file_queries.update_file(db, file_id, s3_key=s3_key)
                 await db.commit()
 
                 # Trigger Bedrock KB sync after successful upload
-                try:
-                    from kb_manager.services.bedrock_kb import BedrockKBClient
-                    client = BedrockKBClient()
-                    ingestion_id = client.start_sync()
-                    if ingestion_id:
-                        logger.info("🔄 KB sync triggered after approve upload — ingestionJobId=%s", ingestion_id)
-                except Exception:
-                    logger.warning("⚠️ KB sync trigger failed after approve upload — non-fatal", exc_info=True)
+                if kb_client is not None:
+                    try:
+                        ingestion_id = await kb_client.start_sync()
+                        if ingestion_id:
+                            logger.info("🔄 KB sync triggered after approve upload — ingestionJobId=%s", ingestion_id)
+                    except Exception:
+                        logger.warning("⚠️ KB sync trigger failed after approve upload — non-fatal", exc_info=True)
     except Exception:
         logger.exception("💥 S3 upload failed for file %s", file_id)
 
@@ -290,6 +296,7 @@ async def approve_file(
     background_tasks.add_task(
         _upload_to_s3, file_id,
         req.app.state.s3_uploader, req.app.state.session_factory,
+        req.app.state.bedrock_kb_client,
     )
 
     similar_files = await _hydrate_similar_files(db, updated.similar_file_ids)
@@ -384,14 +391,12 @@ async def revalidate_file(
 # ---------------------------------------------------------------------------
 
 async def _delete_s3_file(s3_key: str, s3_uploader) -> None:
+    # ``S3Uploader.delete`` already cascades to the metadata sidecar, so a
+    # single call is sufficient.
     try:
-        s3_uploader.delete(s3_key)
+        await s3_uploader.delete(s3_key)
     except Exception:
         logger.exception("💥 S3 delete failed for key %s", s3_key)
-    try:
-        s3_uploader.delete(s3_key + ".metadata.json")
-    except Exception:
-        pass
 
 
 @router.delete("/files/{file_id}", status_code=204)

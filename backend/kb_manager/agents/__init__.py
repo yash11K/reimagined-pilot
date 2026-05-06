@@ -7,7 +7,6 @@ from kb_manager.agents.discovery import (
     DiscoveryResult,
     RawLink,
 )
-from kb_manager.agents.link_triage import LinkTriageAgent, TriageResult
 from kb_manager.agents.extractor import ExtractorAgent, ExtractedFile
 from kb_manager.agents.qa import (
     QAAgent,
@@ -22,8 +21,6 @@ __all__ = [
     "DiscoveryAgent",
     "DiscoveryResult",
     "RawLink",
-    "LinkTriageAgent",
-    "TriageResult",
     "ExtractorAgent",
     "ExtractedFile",
     "QAAgent",

@@ -91,11 +91,11 @@ async def list_sources(
         query = query.where(Source.status == status)
         count_query = count_query.where(Source.status == status)
     if region is not None:
-        query = query.where(Source.region.ilike(f"%{region}%"))
-        count_query = count_query.where(Source.region.ilike(f"%{region}%"))
+        query = query.where(Source.region == region)
+        count_query = count_query.where(Source.region == region)
     if brand is not None:
-        query = query.where(Source.brand.ilike(f"%{brand}%"))
-        count_query = count_query.where(Source.brand.ilike(f"%{brand}%"))
+        query = query.where(Source.brand == brand)
+        count_query = count_query.where(Source.brand == brand)
     if kb_target is not None:
         query = query.where(Source.kb_target == kb_target)
         count_query = count_query.where(Source.kb_target == kb_target)

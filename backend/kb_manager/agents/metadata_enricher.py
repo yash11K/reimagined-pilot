@@ -18,8 +18,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 from strands import Agent
-from strands.models import BedrockModel
 
+from kb_manager.agents._models import get_bedrock_model
 from kb_manager.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -136,12 +136,8 @@ class MetadataEnricher:
 
     def _make_agent(self) -> Agent:
         """Create a fresh, stateless agent for a single invocation."""
-        model = BedrockModel(
-            model_id=self._model_id,
-            max_tokens=self._max_tokens,
-        )
         return Agent(
-            model=model,
+            model=get_bedrock_model(self._model_id, self._max_tokens),
             system_prompt=SYSTEM_PROMPT,
         )
 

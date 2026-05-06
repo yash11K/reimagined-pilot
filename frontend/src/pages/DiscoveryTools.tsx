@@ -29,11 +29,13 @@ import {
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
+import { errorWithRef } from "@/lib/errorRef";
 import { fmtNum } from "@/lib/format";
 import { JobsTable } from "@/components/discovery/JobsTable";
 import { QueueSubmitFields } from "@/components/discovery/QueueSubmitForm";
 import { RecentDiscoveries } from "@/components/discovery/RecentDiscoveries";
 import { useDiscoveryLiveSync } from "@/hooks/useDiscoveryLiveSync";
+import { useJobScoutStream } from "@/hooks/useJobScoutStream";
 import type { KbTarget, SourceSummary } from "@/types/api";
 
 export default function DiscoveryTools() {
@@ -46,6 +48,7 @@ export default function DiscoveryTools() {
   useDiscoveryLiveSync();
 
   const [newJobOpen, setNewJobOpen] = useState(false);
+  const scoutStream = useJobScoutStream();
 
   const stats = useQuery({ queryKey: ["stats"], queryFn: getStats });
 
@@ -70,13 +73,20 @@ export default function DiscoveryTools() {
   const confirmMut = useMutation({
     mutationFn: ({ id, action }: { id: string; action: "process" | "discard" }) =>
       confirmSource(id, { action, reviewed_by: user.id }),
-    onSuccess: (_data, vars) => {
+    onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: ["sources"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
-      if (vars.action === "process") toast.success("Ingesting", "Source queued for processing");
-      else toast.info("Discarded", "Source marked dismissed");
+      if (vars.action === "process") {
+        toast.success("Ingesting", "Source queued for processing");
+        // Subscribe to per-job scout stream for real-time discovery progress
+        if (data.job_id) {
+          scoutStream.attach(data.job_id);
+        }
+      } else {
+        toast.info("Discarded", "Source marked dismissed");
+      }
     },
-    onError: () => toast.error("Action failed"),
+    onError: (err: unknown) => toast.error("Action failed", errorWithRef(err)),
   });
 
   const runAllMut = useMutation({
@@ -126,7 +136,7 @@ export default function DiscoveryTools() {
         );
       }
     },
-    onError: () => toast.error("Run All Jobs failed"),
+    onError: (err: unknown) => toast.error("Run All Jobs failed", errorWithRef(err)),
   });
 
   const items = sources.data?.items ?? [];
@@ -189,6 +199,44 @@ export default function DiscoveryTools() {
       <div className="mt-6">
         <JobsTable />
       </div>
+
+      {/* Live scout progress — appears after confirming a source */}
+      {scoutStream.jobId && (
+        <div className="mt-4">
+          <Card>
+            <CardHeader
+              title="Scout Progress"
+              subtitle={`Job ${scoutStream.jobId.slice(0, 8)}… — ${scoutStream.complete ? "Complete" : "Discovering…"}`}
+              action={
+                scoutStream.complete ? (
+                  <Button size="sm" variant="ghost" onClick={() => scoutStream.detach()}>
+                    Dismiss
+                  </Button>
+                ) : (
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-status-info border-t-transparent" />
+                )
+              }
+            />
+            <CardBody>
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {scoutStream.scoutEvents.length === 0 && (
+                  <p className="text-xs text-ink-muted">Waiting for events…</p>
+                )}
+                {scoutStream.scoutEvents.map((ev, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="shrink-0 rounded bg-bg-muted px-1.5 py-0.5 font-mono text-[10px] text-ink-muted">
+                      {ev.event}
+                    </span>
+                    <span className="truncate text-ink-soft">
+                      {ev.data.url ? String(ev.data.url) : ev.data.label ? String(ev.data.label) : JSON.stringify(ev.data)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RecentDiscoveries />

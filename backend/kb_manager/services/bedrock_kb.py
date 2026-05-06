@@ -2,8 +2,17 @@
 
 Wraps ``bedrock-agent-runtime`` for Retrieve / RetrieveAndGenerate,
 and ``bedrock-agent`` for StartIngestionJob (KB sync).
+
+Public methods are ``async`` and offload the blocking boto3 call via
+``asyncio.to_thread`` so they can be awaited from the FastAPI event loop
+without blocking other in-flight requests.
+
+TODO: evaluate ``aioboto3`` migration to remove the ``asyncio.to_thread``
+hop entirely once we have a clear performance signal that the overhead
+matters for our workload.
 """
 
+import asyncio
 import json
 import logging
 from typing import Any, AsyncGenerator
@@ -38,7 +47,7 @@ class BedrockKBClient:
     # Retrieve (search only — no generation)
     # ------------------------------------------------------------------
 
-    def retrieve(
+    async def retrieve(
         self,
         query: str,
         kb_target: str | None = None,
@@ -62,7 +71,8 @@ class BedrockKBClient:
             }
 
         try:
-            response = self._runtime.retrieve(
+            response = await asyncio.to_thread(
+                self._runtime.retrieve,
                 knowledgeBaseId=self._kb_id,
                 retrievalQuery={"text": query},
                 retrievalConfiguration=retrieval_config,
@@ -97,7 +107,7 @@ class BedrockKBClient:
     # RetrieveAndGenerate (RAG — streaming)
     # ------------------------------------------------------------------
 
-    def retrieve_and_generate(
+    async def retrieve_and_generate(
         self,
         query: str,
         kb_target: str | None = None,
@@ -132,7 +142,8 @@ class BedrockKBClient:
             }
 
         try:
-            response = self._runtime.retrieve_and_generate(
+            response = await asyncio.to_thread(
+                self._runtime.retrieve_and_generate,
                 input={"text": query},
                 retrieveAndGenerateConfiguration={
                     "type": "KNOWLEDGE_BASE",
@@ -174,7 +185,7 @@ class BedrockKBClient:
     # StartIngestionJob (KB sync)
     # ------------------------------------------------------------------
 
-    def start_sync(self) -> str | None:
+    async def start_sync(self) -> str | None:
         """Trigger a Bedrock KB data-source ingestion sync.
 
         Returns the ingestion job ID on success, or None if no
@@ -185,7 +196,8 @@ class BedrockKBClient:
             return None
 
         try:
-            response = self._agent.start_ingestion_job(
+            response = await asyncio.to_thread(
+                self._agent.start_ingestion_job,
                 knowledgeBaseId=self._kb_id,
                 dataSourceId=self._data_source_id,
             )

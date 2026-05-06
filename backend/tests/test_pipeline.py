@@ -54,14 +54,6 @@ class FakeDiscoveryResult:
 
 
 @dataclass
-class FakeTriageResult:
-    classification: str = "expansion"
-    reason: str = "Teaser card links to full article"
-    has_sub_links: bool = False
-    sub_link_count: int = 0
-
-
-@dataclass
 class FakeClassifiedLink:
     url: str = "https://example.com/sub.model.json"
     anchor_text: str | None = "Learn More"
@@ -140,16 +132,19 @@ def _make_pipeline(stream_manager=None):
     """Create a Pipeline with mocked dependencies."""
     sm = stream_manager or StreamManager()
     s3 = MagicMock()
-    s3.upload = MagicMock(return_value="public/avis/nam/test/file.md")
-    s3.delete = MagicMock(return_value=True)
+    s3.upload = AsyncMock(return_value="public/avis/nam/test/file.md")
+    s3.delete = AsyncMock(return_value=True)
     versioning = AsyncMock()
     versioning.check_and_supersede = AsyncMock(return_value="process")
     session_factory = AsyncMock()
+    kb_client = AsyncMock()
+    kb_client.start_sync = AsyncMock(return_value=None)
     return Pipeline(
         stream_manager=sm,
         s3_uploader=s3,
         versioning_service=versioning,
         session_factory=session_factory,
+        kb_client=kb_client,
     )
 
 
@@ -565,74 +560,6 @@ async def test_pipeline_has_no_semaphore():
     """Pipeline no longer owns concurrency — the queue worker does."""
     pipeline = _make_pipeline()
     assert not hasattr(pipeline, "_semaphore")
-
-
-# ---------------------------------------------------------------------------
-# Upload process — basic flow
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_upload_process_completes():
-    """Upload process should parse files, run QA, and complete."""
-    sm = StreamManager()
-    pipeline = _make_pipeline(sm)
-
-    job_id = uuid.uuid4()
-    job_id_str = str(job_id)
-
-    progress_events: list[dict] = []
-
-    async def collect():
-        async for event in sm.subscribe(job_id_str, "progress"):
-            progress_events.append(event)
-
-    task = asyncio.create_task(collect())
-    await asyncio.sleep(0)
-
-    fake_source = FakeSource()
-    fake_job = FakeJob(source=fake_source)
-    fake_kb_file = FakeKBFile()
-
-    mock_db = AsyncMock()
-    mock_db.commit = AsyncMock()
-    mock_session_ctx = AsyncMock()
-    mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_db)
-    mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
-    pipeline._session_factory = MagicMock(return_value=mock_session_ctx)
-
-    # Create a fake UploadFile
-    mock_upload = AsyncMock()
-    mock_upload.read = AsyncMock(return_value=b"# Hello World\nSome content here.")
-    mock_upload.filename = "test-doc.md"
-
-    with patch("kb_manager.services.pipeline.job_queries") as mock_jobs, \
-         patch("kb_manager.services.pipeline.file_queries") as mock_files, \
-         patch("kb_manager.services.pipeline.QAAgent") as mock_qa_cls, \
-         patch("kb_manager.services.pipeline.UniquenessAgent") as mock_uq_cls, \
-         patch("kb_manager.services.pipeline.run_qa_and_uniqueness") as mock_run_qa:
-
-        mock_jobs.get_job = AsyncMock(return_value=fake_job)
-        mock_jobs.update_job = AsyncMock()
-        mock_jobs.update_job_status = AsyncMock()
-
-        mock_files.create_file = AsyncMock(return_value=fake_kb_file)
-        mock_files.update_file = AsyncMock()
-        mock_files.get_file = AsyncMock(return_value=fake_kb_file)
-
-        mock_run_qa.return_value = FakeQAResult()
-
-        await pipeline.run_upload_process(job_id, [mock_upload])
-
-        mock_jobs.update_job_status.assert_called_once_with(
-            mock_db, job_id, "completed"
-        )
-
-    await task
-
-    event_types = [e["event"] for e in progress_events]
-    assert "extraction_started" in event_types
-    assert "job_complete" in event_types
 
 
 # ---------------------------------------------------------------------------

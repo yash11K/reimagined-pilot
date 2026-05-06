@@ -10,12 +10,12 @@ All routes are mounted in `main.py` under the `/api/v1` prefix.
 ## Ingestion (`routes/ingest.py`)
 
 ### `POST /api/v1/ingest`
-Start a new ingestion job.
+Start a new AEM ingestion job. AEM is currently the only supported connector.
 
 **Request Body:**
 ```json
 {
-    "connector_type": "aem",          // "aem" | "upload"
+    "connector_type": "aem",          // only "aem" is supported
     "urls": [
         {
             "url": "https://www.avis.com/en/products.model.json",
@@ -32,8 +32,6 @@ Start a new ingestion job.
 ```
 
 **Response:** `IngestResponse` with list of `JobCreated` (job_id, source_id, source_url, status)
-
-For `connector_type=upload`, files are sent as multipart form data.
 
 ### `GET /api/v1/ingest/{job_id}/scout-stream`
 SSE stream of scout phase events. Events: `scouting_started`, `component_found`, `link_found`, `link_classified`, `scout_complete`.

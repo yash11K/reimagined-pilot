@@ -1,13 +1,20 @@
-"""Activity feed — recent events across files and jobs, ordered by time desc."""
+"""Activity feed — recent events across files, jobs and sources.
+
+Pagination happens at the SQL layer: each event source contributes a row
+shape ``(id, type, actor, target_id, target_title, action, ts)`` to a
+``UNION ALL``, and Postgres handles the ``ORDER BY ts DESC LIMIT/OFFSET``
+plus the ``COUNT(*)`` over the union. This avoids loading the full event
+universe into memory and gives an honest ``total``.
+"""
 
 import logging
-import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import select, union_all, literal, cast, Text
+from sqlalchemy import Text, case, cast, func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 
 from kb_manager.database import get_db
 from kb_manager.models import IngestionJob, KBFile, Source
@@ -31,86 +38,114 @@ class ActivityResponse(BaseModel):
     total: int
 
 
+def _file_events_select() -> Select:
+    # UUID columns must be cast to TEXT before string concat: Postgres has no
+    # ``varchar + uuid`` operator. ``cast(..., Text)`` produces ``::text``.
+    file_id_text = cast(KBFile.id, Text)
+    type_expr = case(
+        (KBFile.status == "approved", literal("file_approved")),
+        else_=literal("file_rejected"),
+    )
+    return select(
+        (literal("file_") + file_id_text).label("id"),
+        type_expr.label("type"),
+        KBFile.reviewed_by.label("actor"),
+        file_id_text.label("target_id"),
+        func.coalesce(KBFile.title, literal("Untitled")).label("target_title"),
+        KBFile.status.label("action"),
+        KBFile.created_at.label("ts"),
+    ).where(
+        KBFile.status.in_(("approved", "rejected")),
+        KBFile.reviewed_by.isnot(None),
+        KBFile.created_at.isnot(None),
+    )
+
+
+def _job_events_select() -> Select:
+    job_id_text = cast(IngestionJob.id, Text)
+    type_expr = case(
+        (IngestionJob.status == "completed", literal("job_completed")),
+        else_=literal("job_failed"),
+    )
+    ts_expr = func.coalesce(IngestionJob.completed_at, IngestionJob.started_at)
+    return (
+        select(
+            (literal("job_") + job_id_text).label("id"),
+            type_expr.label("type"),
+            literal(None).label("actor"),
+            job_id_text.label("target_id"),
+            func.coalesce(
+                func.left(Source.url, 80),
+                func.left(job_id_text, 8),
+            ).label("target_title"),
+            IngestionJob.status.label("action"),
+            ts_expr.label("ts"),
+        )
+        .join(Source, IngestionJob.source_id == Source.id)
+        .where(
+            IngestionJob.status.in_(("completed", "failed")),
+            ts_expr.isnot(None),
+        )
+    )
+
+
+def _source_events_select() -> Select:
+    source_id_text = cast(Source.id, Text)
+    type_expr = case(
+        (Source.status == "ingested", literal("source_confirmed")),
+        else_=literal("source_dismissed"),
+    )
+    ts_expr = func.coalesce(Source.last_ingested_at, Source.created_at)
+    return select(
+        (literal("source_") + source_id_text).label("id"),
+        type_expr.label("type"),
+        literal(None).label("actor"),
+        source_id_text.label("target_id"),
+        func.left(Source.url, 80).label("target_title"),
+        Source.status.label("action"),
+        ts_expr.label("ts"),
+    ).where(
+        Source.status.in_(("ingested", "dismissed")),
+        ts_expr.isnot(None),
+    )
+
+
 @router.get("/activity", response_model=ActivityResponse)
 async def get_activity(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> ActivityResponse:
-    """Union of recent events: file approvals/rejections, job completions, source confirmations."""
-    items: list[ActivityItem] = []
+    """Union of recent events ordered by timestamp DESC, paginated in SQL."""
+    union = union_all(
+        _file_events_select(),
+        _job_events_select(),
+        _source_events_select(),
+    ).subquery("activity")
 
-    # --- File events (approved / rejected) ---
-    file_result = await db.execute(
-        select(KBFile)
-        .where(KBFile.status.in_(("approved", "rejected")))
-        .where(KBFile.reviewed_by.isnot(None))
-        .order_by(KBFile.created_at.desc())
-        .limit(limit + offset)
-    )
-    for f in file_result.scalars().all():
-        event_type = "file_approved" if f.status == "approved" else "file_rejected"
-        items.append(ActivityItem(
-            id=f"file_{f.id}",
-            type=event_type,
-            actor=f.reviewed_by,
-            target_id=str(f.id),
-            target_title=f.title or "Untitled",
-            action=f.status,
-            timestamp=f.created_at,
-        ))
+    total = (
+        await db.execute(select(func.count()).select_from(union))
+    ).scalar_one()
 
-    # --- Job events (completed / failed) ---
-    job_result = await db.execute(
-        select(IngestionJob)
-        .where(IngestionJob.status.in_(("completed", "failed")))
-        .order_by(IngestionJob.completed_at.desc())
-        .limit(limit + offset)
-    )
-    for j in job_result.scalars().all():
-        event_type = "job_completed" if j.status == "completed" else "job_failed"
-        ts = j.completed_at or j.started_at
-        if ts is None:
-            continue
-        # Get source URL for title
-        source_url = ""
-        if j.source:
-            source_url = j.source.url or ""
-        items.append(ActivityItem(
-            id=f"job_{j.id}",
-            type=event_type,
-            actor=None,
-            target_id=str(j.id),
-            target_title=source_url[:80] or str(j.id)[:8],
-            action=j.status,
-            timestamp=ts,
-        ))
+    rows = (
+        await db.execute(
+            select(union)
+            .order_by(union.c.ts.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
 
-    # --- Source confirmation events ---
-    source_result = await db.execute(
-        select(Source)
-        .where(Source.status.in_(("ingested", "dismissed")))
-        .order_by(Source.last_ingested_at.desc())
-        .limit(limit + offset)
-    )
-    for s in source_result.scalars().all():
-        ts = s.last_ingested_at or s.created_at
-        if ts is None:
-            continue
-        event_type = "source_confirmed" if s.status == "ingested" else "source_dismissed"
-        items.append(ActivityItem(
-            id=f"source_{s.id}",
-            type=event_type,
-            actor=None,
-            target_id=str(s.id),
-            target_title=s.url[:80],
-            action=s.status,
-            timestamp=ts,
-        ))
-
-    # Sort all events by timestamp desc, apply offset+limit
-    items.sort(key=lambda x: x.timestamp, reverse=True)
-    total = len(items)
-    paged = items[offset: offset + limit]
-
-    return ActivityResponse(items=paged, total=total)
+    items = [
+        ActivityItem(
+            id=row.id,
+            type=row.type,
+            actor=row.actor,
+            target_id=row.target_id,
+            target_title=row.target_title,
+            action=row.action,
+            timestamp=row.ts,
+        )
+        for row in rows
+    ]
+    return ActivityResponse(items=items, total=total)

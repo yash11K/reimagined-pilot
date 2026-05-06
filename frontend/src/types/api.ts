@@ -1,7 +1,9 @@
 // Backend type mirror — keep in sync with kb_manager/schemas/*
 
 export type KbTarget = "public" | "internal";
-export type Brand = "abg" | "avis" | "budget" | null;
+// DB-stored brand values. Note: "abg" (group selector) is mapped to "avis_budget" at the API
+// boundary by BrandContext.brandParam(); records returned from the backend use these values.
+export type Brand = "avis_budget" | "avis" | "budget" | null;
 
 export type SourceStatus =
   | "active"
@@ -153,7 +155,8 @@ export interface AemUrlInput {
 }
 
 export interface IngestRequest {
-  connector_type: "aem" | "upload";
+  connector_type: "aem";
+  // Backend rejects empty arrays (min_length=1). Callers must guard.
   urls: AemUrlInput[];
   kb_target: KbTarget;
   steering_prompt?: string | null;
@@ -168,6 +171,13 @@ export interface JobCreated {
 
 export interface IngestResponse {
   jobs: JobCreated[];
+}
+
+// POST /sources/{id}/confirm response
+export interface ConfirmSourceResponse {
+  source_id: string;
+  job_id: string | null;
+  status: SourceStatus | JobStatus;
 }
 
 // Nav tree (matches kb_manager/services/nav_parser.py:_link_to_node)

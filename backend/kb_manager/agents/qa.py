@@ -9,14 +9,15 @@ Both agents share a single `QAResult` dataclass consumed by the routing matrix a
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from typing import Literal
 
 from pydantic import BaseModel, Field
 from strands import Agent, tool
-from strands.models import BedrockModel
 
+from kb_manager.agents._models import get_bedrock_model
 from kb_manager.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -82,17 +83,22 @@ do not comment on length alone.
 
 
 class QAAgent:
-    """Decides whether a markdown file is worth ingesting into the KB."""
+    """Decides whether a markdown file is worth ingesting into the KB.
+
+    Builds a fresh Strands ``Agent`` per ``run()`` invocation so conversation
+    history from prior files cannot bleed into the next file's verdict.
+    """
 
     def __init__(self) -> None:
         settings = get_settings()
-        logger.info("🧪 Initialising QA Agent (model=%s)", settings.HAIKU_MODEL_ID)
-        model = BedrockModel(
-            model_id=settings.HAIKU_MODEL_ID,
-            max_tokens=settings.HAIKU_MAX_TOKENS,
-        )
-        self._agent = Agent(
-            model=model,
+        self._model_id = settings.HAIKU_MODEL_ID
+        self._max_tokens = settings.HAIKU_MAX_TOKENS
+        logger.info("🧪 Initialising QA Agent (model=%s)", self._model_id)
+
+    def _build_agent(self) -> Agent:
+        """Create a fresh, stateless agent for a single invocation."""
+        return Agent(
+            model=get_bedrock_model(self._model_id, self._max_tokens),
             system_prompt=QA_SYSTEM_PROMPT,
         )
 
@@ -118,7 +124,8 @@ class QAAgent:
         parts.append(f"```markdown\n{md_content}\n```")
         prompt = "\n".join(parts)
 
-        result = await self._agent.invoke_async(
+        agent = self._build_agent()
+        result = await agent.invoke_async(
             prompt, structured_output_model=QAOutput,
         )
 
@@ -223,17 +230,22 @@ not merely overlapping coverage of the same topic.
 
 
 class UniquenessAgent:
-    """Compares a candidate file against existing KB content for overlap/conflicts."""
+    """Compares a candidate file against existing KB content for overlap/conflicts.
+
+    Builds a fresh Strands ``Agent`` per ``run()`` invocation so conversation
+    history from prior files cannot bleed into the next file's verdict.
+    """
 
     def __init__(self) -> None:
         settings = get_settings()
-        logger.info("🔎 Initialising Uniqueness Agent (model=%s)", settings.HAIKU_MODEL_ID)
-        model = BedrockModel(
-            model_id=settings.HAIKU_MODEL_ID,
-            max_tokens=settings.HAIKU_MAX_TOKENS,
-        )
-        self._agent = Agent(
-            model=model,
+        self._model_id = settings.HAIKU_MODEL_ID
+        self._max_tokens = settings.HAIKU_MAX_TOKENS
+        logger.info("🔎 Initialising Uniqueness Agent (model=%s)", self._model_id)
+
+    def _build_agent(self) -> Agent:
+        """Create a fresh, stateless agent for a single invocation."""
+        return Agent(
+            model=get_bedrock_model(self._model_id, self._max_tokens),
             system_prompt=UNIQUENESS_SYSTEM_PROMPT,
             tools=[query_kb],
         )
@@ -260,7 +272,8 @@ class UniquenessAgent:
         parts.append(f"```markdown\n{md_content}\n```")
         prompt = "\n".join(parts)
 
-        result = await self._agent.invoke_async(
+        agent = self._build_agent()
+        result = await agent.invoke_async(
             prompt, structured_output_model=UniquenessOutput,
         )
 
@@ -295,8 +308,12 @@ async def run_qa_and_uniqueness(
     qa = qa_agent or QAAgent()
     uq = uniqueness_agent or UniquenessAgent()
 
-    qa_output = await qa.run(md_content, metadata=metadata)
-    uq_output = await uq.run(md_content, metadata=metadata)
+    # QA and Uniqueness have no data dependency — run concurrently to
+    # halve per-file latency.
+    qa_output, uq_output = await asyncio.gather(
+        qa.run(md_content, metadata=metadata),
+        uq.run(md_content, metadata=metadata),
+    )
 
     return QAResult(
         quality_verdict=qa_output.verdict,

@@ -19,13 +19,32 @@ async_session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def init_engine() -> AsyncEngine:
-    """Create the async engine from settings and bind the session factory."""
+    """Create the async engine from settings and bind the session factory.
+
+    Neon's serverless pooler runs PgBouncer in transaction mode, which does
+    NOT support per-session prepared statements. asyncpg defaults to caching
+    prepared statements, and every cache miss across the pooler costs a
+    full round-trip — that's what was making list endpoints take 27s+.
+
+    Setting ``statement_cache_size=0`` and ``prepared_statement_cache_size=0``
+    forces asyncpg to send each query as a one-shot, which is what the
+    pooler expects. Recommended Neon config for asyncpg.
+    """
     global engine, async_session_factory
     settings = get_settings()
     # Mask password in log output
     safe_url = settings.DATABASE_URL.split("@")[-1] if "@" in settings.DATABASE_URL else "***"
     logger.info("🗄️ Creating async engine → %s", safe_url)
-    engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True)
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+        },
+    )
     async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
     logger.info("🗄️ Session factory bound successfully")
     return engine

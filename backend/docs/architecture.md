@@ -90,7 +90,6 @@ kb_manager/
 ├── agents/                  # LLM-powered agents (Strands SDK)
 │   ├── discovery.py         # AEM component + link classification
 │   ├── extractor.py         # Component → markdown conversion
-│   ├── link_triage.py       # Uncertain link classification
 │   ├── metadata_enricher.py # Raw content → rich metadata
 │   └── qa.py                # Quality gate + uniqueness check
 │

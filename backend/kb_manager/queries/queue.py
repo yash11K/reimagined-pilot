@@ -21,21 +21,30 @@ async def add_to_queue(
     kb_target: str = "public",
     priority: int = 0,
     max_retries: int = 3,
+    job_id: uuid.UUID | None = None,
 ) -> QueueItem | None:
     """Insert a queue item, skipping if an active item for this URL already exists.
 
+    When ``job_id`` is supplied, the worker will run the pipeline against the
+    pre-existing job + its source instead of creating new records itself.
+    This lets the API layer return a usable ``job_id`` for SSE subscriptions
+    immediately while the actual work still flows through the queue.
+
     Returns the item if inserted, None if duplicate was skipped.
     """
+    values: dict = {
+        "url": url,
+        "region": region,
+        "brand": brand,
+        "kb_target": kb_target,
+        "priority": priority,
+        "max_retries": max_retries,
+    }
+    if job_id is not None:
+        values["job_id"] = job_id
     stmt = (
         pg_insert(QueueItem)
-        .values(
-            url=url,
-            region=region,
-            brand=brand,
-            kb_target=kb_target,
-            priority=priority,
-            max_retries=max_retries,
-        )
+        .values(**values)
         .on_conflict_do_nothing(index_elements=["url"], index_where=QueueItem.status.in_(["queued", "processing"]))
         .returning(QueueItem.__table__.c.id)
     )

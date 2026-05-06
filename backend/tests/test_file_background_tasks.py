@@ -24,7 +24,7 @@ class TestUploadToS3:
         file_id = uuid.uuid4()
         mock_file = MagicMock(id=file_id)
         mock_s3 = MagicMock()
-        mock_s3.upload.return_value = "public/brand/region/ns/file.md"
+        mock_s3.upload = AsyncMock(return_value="public/brand/region/ns/file.md")
 
         mock_db = AsyncMock()
         mock_session_ctx = AsyncMock()
@@ -50,7 +50,7 @@ class TestUploadToS3:
         file_id = uuid.uuid4()
         mock_file = MagicMock(id=file_id)
         mock_s3 = MagicMock()
-        mock_s3.upload.return_value = None
+        mock_s3.upload = AsyncMock(return_value=None)
 
         mock_db = AsyncMock()
         mock_session_ctx = AsyncMock()
@@ -92,7 +92,7 @@ class TestUploadToS3:
         """Exceptions during upload don't propagate — they're logged."""
         file_id = uuid.uuid4()
         mock_s3 = MagicMock()
-        mock_s3.upload.side_effect = Exception("boom")
+        mock_s3.upload = AsyncMock(side_effect=Exception("boom"))
         mock_file = MagicMock(id=file_id)
 
         mock_db = AsyncMock()

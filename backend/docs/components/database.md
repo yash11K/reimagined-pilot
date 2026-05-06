@@ -75,6 +75,11 @@ The unified entity for any content URL entering the system.
 | `metadata_` | JSONB? | Arbitrary metadata (reason, anchor_text, etc.) |
 | `last_ingested_at` | Timestamp? | Last successful ingestion |
 
+> **Naming note:** the Python attribute is `metadata_` (trailing underscore)
+> because `metadata` is reserved by SQLAlchemy's `DeclarativeBase`. The
+> underlying Postgres column is `metadata` (no underscore) — see
+> `mapped_column("metadata", JSONB, ...)` in `kb_manager/models.py`.
+
 **Unique constraint:** `(type, url)` — prevents duplicate sources.
 
 ---

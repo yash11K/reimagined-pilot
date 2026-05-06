@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 from strands import Agent
-from strands.models import BedrockModel
 
+from kb_manager.agents._models import get_bedrock_model
 from kb_manager.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -21,22 +21,22 @@ logger = logging.getLogger(__name__)
 
 class ComponentLink(BaseModel):
     url: str = ""
-    anchor_text: Optional[str] = None
+    anchor_text: str | None = None
 
 
 class ComponentOutput(BaseModel):
     id: str = ""
     component_type: str = ""
-    title: Optional[str] = None
-    text_snippet: Optional[str] = None
+    title: str | None = None
+    text_snippet: str | None = None
     links: list[ComponentLink] = Field(default_factory=list)
 
 
 class ClassifiedLinkOutput(BaseModel):
     """A link with its classification decided by the Discovery Agent."""
     url: str = ""
-    anchor_text: Optional[str] = None
-    context: Optional[str] = None
+    anchor_text: str | None = None
+    context: str | None = None
     classification: Literal["certain", "uncertain", "navigation"] = "uncertain"
     reason: str = ""
 
@@ -104,23 +104,20 @@ SYSTEM_PROMPT = (
     "You are a content discovery and link classification agent specialising in AEM "
     "(Adobe Experience Manager) JSON structures.\n\n"
     "You receive TWO inputs:\n"
-    "1. The pruned AEM JSON tree for a page\n"
-    "2. A list of PRE-EXTRACTED LINKS found deterministically from that JSON\n\n"
+    "1. A COMPONENT DIGEST — a pre-built flat list of content-bearing nodes "
+    "extracted from the page. Each entry already contains id, type, title, "
+    "text_snippet (≤200 chars verbatim), and links. You do NOT need to walk "
+    "any tree; the digest IS the tree, flattened.\n"
+    "2. A list of PRE-EXTRACTED LINKS found deterministically from that JSON.\n\n"
     "Your job has TWO parts:\n\n"
     "═══ PART 1: COMPONENT EXTRACTION ═══\n"
-    "Walk the pruned AEM JSON tree recursively through :items objects and extract "
-    "content components.\n"
-    "For each content node that has actual text, extract:\n"
-    "- id: the node's 'id' field\n"
-    "- component_type: from the ':type' field\n"
-    "- title: from 'title', 'headline', 'heroHeadline', or 'header' fields\n"
-    "- text_snippet: the first 200 chars of body text (from 'bodyText', 'description', "
-    "'body', 'bodyContent', 'heroDescription'). Preserve verbatim.\n"
-    "- links: all outbound URLs found in that node\n\n"
-    "Skip purely structural containers (containers with no text, only children references).\n\n"
+    "Echo back the components from the digest as your `components` output. "
+    "Copy id, type (as component_type), title, text_snippet and links "
+    "verbatim. You may drop entries that have no title and no text_snippet "
+    "(pure link containers) — they add no value to downstream extraction.\n\n"
     "═══ PART 2: LINK CLASSIFICATION ═══\n"
     "For each link in the pre-extracted links list, classify it by examining the "
-    "surrounding context in the AEM JSON.\n\n"
+    "surrounding context in the digest.\n\n"
     "CLASSIFICATIONS (only three options):\n"
     "- certain: The link points to a CONTENT PAGE that is worth ingesting. It has "
     "meaningful content — FAQ detail pages, product detail pages, service descriptions, "
@@ -155,17 +152,22 @@ SYSTEM_PROMPT = (
 
 
 class DiscoveryAgent:
-    """Discovers content components and classifies links from pruned AEM JSON."""
+    """Discovers content components and classifies links from pruned AEM JSON.
+
+    Builds a fresh Strands ``Agent`` per ``run()`` invocation so conversation
+    history from prior pages cannot bleed into the next page's classification.
+    """
 
     def __init__(self) -> None:
         settings = get_settings()
-        logger.info("🔎 Initialising Discovery Agent (model=%s)", settings.HAIKU_MODEL_ID)
-        model = BedrockModel(
-            model_id=settings.HAIKU_MODEL_ID,
-            max_tokens=settings.HAIKU_MAX_TOKENS,
-        )
-        self._agent = Agent(
-            model=model,
+        self._model_id = settings.HAIKU_MODEL_ID
+        self._max_tokens = settings.HAIKU_MAX_TOKENS
+        logger.info("🔎 Initialising Discovery Agent (model=%s)", self._model_id)
+
+    def _build_agent(self) -> Agent:
+        """Create a fresh, stateless agent for a single invocation."""
+        return Agent(
+            model=get_bedrock_model(self._model_id, self._max_tokens),
             system_prompt=SYSTEM_PROMPT,
         )
 
@@ -174,17 +176,22 @@ class DiscoveryAgent:
         pruned_json: dict,
         pre_extracted_links: list[dict] | None = None,
     ) -> DiscoveryResult:
-        """Analyse pruned AEM JSON with pre-extracted links.
+        """Analyse a pruned AEM page with pre-extracted links.
 
         Args:
-            pruned_json: The pruned AEM JSON tree.
+            pruned_json: The pruned AEM JSON tree. Used here only to derive
+                the flat component digest passed into the prompt — the LLM
+                itself never sees the raw tree.
             pre_extracted_links: List of dicts with keys: url, anchor_text, context.
         """
-        json_size = len(json.dumps(pruned_json))
+        # Lazy import to keep the agents/services dependency cycle one-way.
+        from kb_manager.services.aem_pruner import build_component_digest
+
+        digest = build_component_digest(pruned_json)
         link_count = len(pre_extracted_links) if pre_extracted_links else 0
         logger.info(
-            "🔎 Discovery Agent running on %d bytes of pruned JSON with %d pre-extracted links",
-            json_size, link_count,
+            "🔎 Discovery Agent running on %d-component digest with %d pre-extracted links",
+            len(digest), link_count,
         )
 
         links_section = ""
@@ -197,14 +204,17 @@ class DiscoveryAgent:
                 f"```json\n{links_block}\n```"
             )
 
+        digest_block = json.dumps(digest, indent=2)
         prompt = (
-            "Analyse the following pruned AEM JSON. Extract all content components "
-            "and classify each pre-extracted link.\n\n"
-            f"═══ PRUNED AEM JSON ═══\n```json\n{json.dumps(pruned_json, indent=2)}\n```"
+            "Echo the component digest as `components` and classify each "
+            "pre-extracted link.\n\n"
+            f"═══ COMPONENT DIGEST ({len(digest)} entries) ═══\n"
+            f"```json\n{digest_block}\n```"
             f"{links_section}"
         )
 
-        result = await self._agent.invoke_async(
+        agent = self._build_agent()
+        result = await agent.invoke_async(
             prompt, structured_output_model=DiscoveryOutput,
         )
 
@@ -271,7 +281,10 @@ class DiscoveryAgent:
                 reason=cl.reason,
             ))
 
-        # Safety net: any pre-extracted link the LLM missed gets added as uncertain
+        # Safety net: any pre-extracted link the LLM missed defaults to
+        # ``navigation`` so it's filtered as ``denied_navigation`` rather than
+        # polluting the human-review queue. Reviewers can still find these
+        # via the denied_* sources view if needed.
         fallback_count = 0
         if pre_extracted_links:
             for pel in pre_extracted_links:
@@ -279,15 +292,15 @@ class DiscoveryAgent:
                 if url and url not in seen_urls:
                     fallback_count += 1
                     logger.warning(
-                        "⚠️ Discovery Agent missed link %s — adding as uncertain",
+                        "⚠️ Discovery Agent missed link %s — defaulting to navigation",
                         url[:60],
                     )
                     classified_links.append(ClassifiedLink(
                         url=url,
                         anchor_text=pel.get("anchor_text"),
                         context=pel.get("context"),
-                        classification="uncertain",
-                        reason="Not classified by agent — added as fallback",
+                        classification="navigation",
+                        reason="Not classified by agent — defaulted to navigation",
                     ))
                     seen_urls.add(url)
 

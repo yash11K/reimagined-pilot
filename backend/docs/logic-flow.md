@@ -200,29 +200,7 @@ The queue worker runs continuously in the background, processing URLs that were 
 
 ---
 
-## 3. File Upload Flow
-
-Users can upload markdown files directly instead of crawling AEM.
-
-```
-POST /api/v1/ingest (connector_type=upload, files attached)
-    │
-    ├── Create Source (type=upload)
-    ├── Create IngestionJob (status=processing)
-    ├── Spawn background: Pipeline.run_upload_process()
-    │
-    │   For each uploaded file:
-    │     1. Read content as UTF-8
-    │     2. Wrap as ExtractedFile (title from filename)
-    │     3. _process_single_file():
-    │        QA → Uniqueness → Route → Upload if approved
-    │
-    └── Finalise job (completed, trigger KB sync)
-```
-
----
-
-## 4. Excel Bulk Import Flow
+## 3. Excel Bulk Import Flow
 
 The `scripts/ingest_excel.py` script imports content from an Excel export (e.g., Decagon KB dump).
 
@@ -247,7 +225,7 @@ python -m scripts.ingest_excel [--dry-run] [--skip-s3] [--concurrency N]
 
 ---
 
-## 5. Source Confirmation Flow
+## 4. Source Confirmation Flow
 
 When the scout phase classifies a link as "uncertain", it creates a source with `status=needs_confirmation`. A human reviews and decides.
 
@@ -270,7 +248,7 @@ POST /api/v1/sources/{id}/confirm
 
 ---
 
-## 6. File Review Flow
+## 5. File Review Flow
 
 After extraction, files land in various statuses. Humans can review and override.
 
@@ -298,7 +276,7 @@ POST /api/v1/files/{id}/revalidate
 
 ---
 
-## 7. Search & RAG Flow
+## 6. Search & RAG Flow
 
 ```
 GET /api/v1/search?q=refueling&entity=files,jobs
@@ -316,7 +294,7 @@ POST /api/v1/kb/chat    (Bedrock RetrieveAndGenerate)
 
 ---
 
-## 8. SSE Event Streaming
+## 7. SSE Event Streaming
 
 ```
 Per-Job Channels (pipeline progress):
@@ -338,7 +316,7 @@ Global Event Stream (UI dashboard):
 
 ---
 
-## 9. Error Handling & Retry Logic
+## 8. Error Handling & Retry Logic
 
 ```
 Pipeline Failure:

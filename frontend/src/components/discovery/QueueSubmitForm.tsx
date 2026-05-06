@@ -6,6 +6,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
 import { Input, Label } from "@/components/ui/Input";
+import { errorWithRef } from "@/lib/errorRef";
 
 export function QueueSubmitFields({ onSubmitted }: { onSubmitted?: () => void }) {
   const toast = useToast();
@@ -30,8 +31,8 @@ export function QueueSubmitFields({ onSubmitted }: { onSubmitted?: () => void })
       setPriority(0);
       onSubmitted?.();
     },
-    onError: (err: Error) => {
-      toast.error("Queue Submission Failed", err.message);
+    onError: (err: unknown) => {
+      toast.error("Queue Submission Failed", errorWithRef(err));
     },
   });
 

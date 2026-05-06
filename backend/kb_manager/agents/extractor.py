@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 from strands import Agent
-from strands.models import BedrockModel
 
+from kb_manager.agents._models import get_bedrock_model
 from kb_manager.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -22,12 +21,12 @@ logger = logging.getLogger(__name__)
 class ExtractedFileOutput(BaseModel):
     title: str = ""
     md_content: str = ""
-    source_url: Optional[str] = None
-    content_type: Optional[str] = None
-    region: Optional[str] = None
-    brand: Optional[str] = None
-    category: Optional[str] = None
-    visibility: Optional[str] = None
+    source_url: str | None = None
+    content_type: str | None = None
+    region: str | None = None
+    brand: str | None = None
+    category: str | None = None
+    visibility: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -113,17 +112,22 @@ SYSTEM_PROMPT = (
 
 
 class ExtractorAgent:
-    """Extracts markdown files from content components using Sonnet."""
+    """Extracts markdown files from content components using Sonnet.
+
+    Builds a fresh Strands ``Agent`` per ``run()`` invocation so conversation
+    history from prior pages cannot bleed into the next page's extraction.
+    """
 
     def __init__(self) -> None:
         settings = get_settings()
-        logger.info("📝 Initialising Extractor Agent (model=%s)", settings.BEDROCK_MODEL_ID)
-        model = BedrockModel(
-            model_id=settings.BEDROCK_MODEL_ID,
-            max_tokens=settings.BEDROCK_MAX_TOKENS,
-        )
-        self._agent = Agent(
-            model=model,
+        self._model_id = settings.BEDROCK_MODEL_ID
+        self._max_tokens = settings.BEDROCK_MAX_TOKENS
+        logger.info("📝 Initialising Extractor Agent (model=%s)", self._model_id)
+
+    def _build_agent(self) -> Agent:
+        """Create a fresh, stateless agent for a single invocation."""
+        return Agent(
+            model=get_bedrock_model(self._model_id, self._max_tokens),
             system_prompt=SYSTEM_PROMPT,
         )
 
@@ -145,7 +149,8 @@ class ExtractorAgent:
             parts.append(f"\nSteering prompt: {steering_prompt}")
 
         prompt = "\n".join(parts)
-        result = await self._agent.invoke_async(
+        agent = self._build_agent()
+        result = await agent.invoke_async(
             prompt, structured_output_model=ExtractionOutput,
         )
 

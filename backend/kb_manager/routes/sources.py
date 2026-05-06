@@ -11,6 +11,7 @@ from kb_manager.database import get_db
 from kb_manager.models import KBFile
 from kb_manager.queries import files as file_queries
 from kb_manager.queries import jobs as job_queries
+from kb_manager.queries import queue as queue_queries
 from kb_manager.queries import sources as source_queries
 from kb_manager.schemas.common import PaginatedResponse
 from kb_manager.schemas.sources import (
@@ -36,24 +37,6 @@ class ConfirmSourceRequest(BaseModel):
 # Background helpers
 # ---------------------------------------------------------------------------
 
-async def _run_scout_for_source(
-    source_id: uuid.UUID,
-    source_url: str,
-    kb_target: str,
-    pipeline,
-    session_factory: async_sessionmaker,
-) -> None:
-    """Create a new job for an existing source and run scout → process."""
-    from kb_manager.queries import jobs as job_queries_bg
-
-    async with session_factory() as db:
-        job = await job_queries_bg.create_job(db, source_id=source_id, status="scouting")
-        await db.commit()
-        job_id = job.id
-
-    await pipeline.run_scout(job_id, source_url)
-
-
 async def _delete_source_files_from_s3(
     source_id: uuid.UUID,
     session_factory: async_sessionmaker,
@@ -67,11 +50,8 @@ async def _delete_source_files_from_s3(
             result = await file_queries.list_files(db, source_id=source_id, size=1000)
             for f in result["items"]:
                 if f.s3_key:
-                    s3_uploader.delete(f.s3_key)
-                    try:
-                        s3_uploader.delete(f.s3_key + ".metadata.json")
-                    except Exception:
-                        pass
+                    # ``S3Uploader.delete`` cascades to the metadata sidecar.
+                    await s3_uploader.delete(f.s3_key)
                 await file_queries.delete_file(db, f.id)
             await db.commit()
     except Exception:
@@ -206,16 +186,26 @@ async def confirm_source(
 
     if body.action == "process":
         await source_queries.update_source(db, source_id, status="active")
+        # Create the job inline so the response carries the id, then enqueue
+        # the URL bound to that job. Worker handles graceful shutdown + retry.
+        job = await job_queries.create_job(
+            db, source_id=source_id, status="scouting",
+        )
+        await queue_queries.add_to_queue(
+            db,
+            url=source.url,
+            region=source.region,
+            brand=source.brand,
+            kb_target=source.kb_target,
+            job_id=job.id,
+        )
         await db.commit()
 
-        pipeline = request.app.state.pipeline
-        session_factory = request.app.state.session_factory
-        background_tasks.add_task(
-            _run_scout_for_source,
-            source_id, source.url, source.kb_target,
-            pipeline, session_factory,
-        )
-        return {"source_id": str(source_id), "status": "scouting"}
+        worker = getattr(request.app.state, "queue_worker", None)
+        if worker is not None:
+            worker.notify()
+
+        return {"source_id": str(source_id), "job_id": str(job.id), "status": "scouting"}
 
     raise HTTPException(status_code=422, detail="action must be 'process' or 'discard'")
 
@@ -231,36 +221,31 @@ async def delete_source(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Delete a source and cascade-delete all its linked KB files + S3 objects."""
+    """Delete a source. ``ON DELETE CASCADE`` on ``ingestion_jobs.source_id``
+    and ``kb_files.job_id`` (plus the existing junction CASCADE) clears all
+    child rows; S3 cleanup runs in the background.
+    """
     source = await source_queries.get_source(db, source_id)
     if source is None:
         raise HTTPException(status_code=404, detail=f"Source {source_id} not found")
 
-    # Delete DB rows for linked files (junction CASCADE handles junction rows)
+    # Capture S3 keys before the cascade deletes the kb_files rows.
     files_result = await file_queries.list_files(db, source_id=source_id, size=1000)
-    for f in files_result["items"]:
-        await file_queries.delete_file(db, f.id)
+    s3_keys = [f.s3_key for f in files_result["items"] if f.s3_key]
 
     await source_queries.delete_source(db, source_id)
     await db.commit()
 
-    # S3 cleanup in background
-    s3_uploader = request.app.state.s3_uploader
-    session_factory = request.app.state.session_factory
-    background_tasks.add_task(
-        _cleanup_s3_keys,
-        [f.s3_key for f in files_result["items"] if f.s3_key],
-        s3_uploader,
-    )
+    if s3_keys:
+        background_tasks.add_task(
+            _cleanup_s3_keys, s3_keys, request.app.state.s3_uploader,
+        )
 
 
 async def _cleanup_s3_keys(s3_keys: list[str], s3_uploader) -> None:
+    # ``S3Uploader.delete`` cascades to the metadata sidecar, so one call per key.
     for key in s3_keys:
         try:
-            s3_uploader.delete(key)
-        except Exception:
-            pass
-        try:
-            s3_uploader.delete(key + ".metadata.json")
+            await s3_uploader.delete(key)
         except Exception:
             pass

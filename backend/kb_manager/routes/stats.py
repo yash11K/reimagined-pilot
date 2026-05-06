@@ -24,75 +24,57 @@ async def get_stats(
     """Return aggregate dashboard statistics.
 
     All counts are computed directly from kb_files, ingestion_jobs, and
-    sources tables — no denormalized counters.
+    sources tables — no denormalized counters. Uses ``COUNT(*) FILTER``
+    so each table is scanned at most once per request.
     """
     logger.info("📊 GET /stats — computing dashboard statistics")
-    # --- kb_files counts ---
-    total_files = (
-        await db.execute(select(func.count()).select_from(KBFile))
-    ).scalar_one()
 
-    pending_review = (
-        await db.execute(
-            select(func.count()).select_from(KBFile).where(KBFile.status == "pending_review")
-        )
-    ).scalar_one()
-
-    approved = (
-        await db.execute(
-            select(func.count()).select_from(KBFile).where(KBFile.status == "approved")
-        )
-    ).scalar_one()
-
-    rejected = (
-        await db.execute(
-            select(func.count()).select_from(KBFile).where(KBFile.status == "rejected")
-        )
-    ).scalar_one()
-
-    kb_public_files = (
-        await db.execute(
-            select(func.count()).select_from(KBFile).where(KBFile.kb_target == "public")
-        )
-    ).scalar_one()
-
-    kb_internal_files = (
-        await db.execute(
-            select(func.count()).select_from(KBFile).where(KBFile.kb_target == "internal")
-        )
-    ).scalar_one()
-
-    # --- ingestion_jobs counts ---
-    active_jobs = (
-        await db.execute(
-            select(func.count())
-            .select_from(IngestionJob)
-            .where(IngestionJob.status.in_(_ACTIVE_JOB_STATUSES))
-        )
-    ).scalar_one()
-
-    failed_jobs_count = (
-        await db.execute(
-            select(func.count())
-            .select_from(IngestionJob)
-            .where(IngestionJob.status == "failed")
-        )
-    ).scalar_one()
-
-    # --- discovered_today: sources created in the last rolling 24h (UTC) ---
     cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-    discovered_today = (
-        await db.execute(
-            select(func.count())
-            .select_from(Source)
-            .where(Source.created_at >= cutoff)
-        )
-    ).scalar_one()
 
-    # --- sources count ---
-    sources_count = (
-        await db.execute(select(func.count()).select_from(Source))
-    ).scalar_one()
+    # --- Single pass over kb_files ---
+    files_row = (
+        await db.execute(
+            select(
+                func.count().label("total"),
+                func.count().filter(KBFile.status == "pending_review").label("pending"),
+                func.count().filter(KBFile.status == "approved").label("approved"),
+                func.count().filter(KBFile.status == "rejected").label("rejected"),
+                func.count().filter(KBFile.kb_target == "public").label("public_files"),
+                func.count().filter(KBFile.kb_target == "internal").label("internal_files"),
+            ).select_from(KBFile)
+        )
+    ).one()
+
+    # --- Single pass over ingestion_jobs ---
+    jobs_row = (
+        await db.execute(
+            select(
+                func.count().filter(IngestionJob.status.in_(_ACTIVE_JOB_STATUSES)).label("active"),
+                func.count().filter(IngestionJob.status == "failed").label("failed"),
+            ).select_from(IngestionJob)
+        )
+    ).one()
+
+    # --- Single pass over sources ---
+    sources_row = (
+        await db.execute(
+            select(
+                func.count().label("total"),
+                func.count().filter(Source.created_at >= cutoff).label("discovered_today"),
+            ).select_from(Source)
+        )
+    ).one()
+
+    total_files = files_row.total
+    pending_review = files_row.pending
+    approved = files_row.approved
+    rejected = files_row.rejected
+    kb_public_files = files_row.public_files
+    kb_internal_files = files_row.internal_files
+    active_jobs = jobs_row.active
+    failed_jobs_count = jobs_row.failed
+    sources_count = sources_row.total
+    discovered_today = sources_row.discovered_today
 
     logger.info("📊 Stats: files=%d (pending=%d, approved=%d, rejected=%d), "
                 "active_jobs=%d, failed_jobs=%d, discovered_today=%d, sources=%d, "

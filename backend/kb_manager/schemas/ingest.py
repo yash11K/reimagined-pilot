@@ -3,7 +3,7 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AemUrlInput(BaseModel):
@@ -18,10 +18,15 @@ class AemUrlInput(BaseModel):
 
 
 class IngestRequest(BaseModel):
-    """Request body for POST /ingest."""
+    """Request body for POST /ingest.
 
-    connector_type: Literal["aem", "upload"]
-    urls: list[AemUrlInput] | None = None
+    Only the AEM connector is supported. ``connector_type`` is retained as a
+    one-value literal so existing clients that send it continue to validate;
+    a future discriminated-union refactor (#12) may remove it entirely.
+    """
+
+    connector_type: Literal["aem"] = "aem"
+    urls: list[AemUrlInput] = Field(min_length=1)
     kb_target: Literal["public", "internal"]
     steering_prompt: str | None = None
 

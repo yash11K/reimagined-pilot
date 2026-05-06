@@ -118,7 +118,10 @@ export async function streamKbChat(
           ((payload as { sources?: KbChatSource[] })?.sources ?? []),
         );
         break;
-      case "token":
+      // Backend emits a single ``answer`` event with the full text.
+      // Bedrock RetrieveAndGenerate is non-streaming, so true token-by-token
+      // delivery is not available; the handler name is preserved.
+      case "answer":
         handlers.onToken((payload as { text?: string })?.text ?? "");
         break;
       case "error":

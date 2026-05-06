@@ -116,7 +116,7 @@ async def list_queue(
             for i in items
         ],
         "counts": counts,
-        "max_workers": worker._max_workers if worker else 0,
+        "max_workers": worker.max_workers if worker else 0,
         "active_workers": worker.active_count if worker else 0,
     }
 
@@ -134,7 +134,7 @@ async def queue_counts(
     worker = getattr(request.app.state, "queue_worker", None)
     return {
         "counts": counts,
-        "max_workers": worker._max_workers if worker else 0,
+        "max_workers": worker.max_workers if worker else 0,
         "active_workers": worker.active_count if worker else 0,
     }
 

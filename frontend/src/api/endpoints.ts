@@ -9,6 +9,7 @@ import type {
   ActivityResponse,
   IngestRequest,
   IngestResponse,
+  ConfirmSourceResponse,
   NavTreeNode,
   QueueSubmitRequest,
   QueueSubmitResponse,
@@ -75,7 +76,10 @@ export const listJobs = (params: ListJobsParams = {}) => {
 export const confirmSource = (
   id: string,
   body: { action: "process" | "discard"; reviewed_by: string }
-) => apiClient.post(`/sources/${id}/confirm`, body).then((r) => r.data);
+) =>
+  apiClient
+    .post<ConfirmSourceResponse>(`/sources/${id}/confirm`, body)
+    .then((r) => r.data);
 
 export const deleteSource = (id: string) =>
   apiClient.delete(`/sources/${id}`).then((r) => r.data);

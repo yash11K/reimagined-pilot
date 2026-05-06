@@ -3,8 +3,17 @@
 Handles uploading markdown content to S3, deleting superseded files,
 and generating presigned download URLs. Uses boto3 with bucket name
 from application settings.
+
+Public methods are ``async`` and offload the blocking boto3 call via
+``asyncio.to_thread`` so they can be awaited safely from the FastAPI
+event loop without starving other tasks.
+
+TODO: evaluate ``aioboto3`` migration to remove the ``asyncio.to_thread``
+hop entirely once we have a clear performance signal that the overhead
+matters for our workload.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -28,24 +37,70 @@ class S3Uploader:
         self._client = boto3.client("s3", region_name=self._region)
         logger.info("☁️ S3Uploader initialised — bucket=%s, region=%s", self._bucket, self._region)
 
-    @staticmethod
+    # Per-segment limit. S3 keys can be up to 1024 chars overall; keeping each
+    # segment to 60 leaves plenty of head-room with 5 segments.
+    _SEGMENT_MAX = 60
+    # Anything outside this set is replaced with ``-`` so LLM-derived values
+    # cannot inject path separators, ``..`` traversal, or stray punctuation
+    # that would collide with operator-managed keys.
+    _SEGMENT_ALLOWED = re.compile(r"[^a-zA-Z0-9_.\-]")
+
+    @classmethod
+    def _sanitize_segment(cls, segment: str) -> str:
+        """Sanitize a single S3 key path segment.
+
+        - Drops leading/trailing slashes
+        - Replaces any character outside ``[a-zA-Z0-9_.-]`` with ``-``
+        - Collapses runs of ``-``
+        - Strips a leading ``.`` so ``..`` cannot survive
+        - Caps length at ``_SEGMENT_MAX``
+        """
+        s = segment.strip("/").strip()
+        if not s:
+            return ""
+        s = cls._SEGMENT_ALLOWED.sub("-", s)
+        # Collapse multiple dashes
+        s = re.sub(r"-+", "-", s).strip("-")
+        # Forbid leading dots so traversal segments (``..``, ``.``) collapse
+        # to an empty segment after the strip below.
+        s = s.lstrip(".")
+        if not s:
+            return ""
+        return s[: cls._SEGMENT_MAX]
+
+    @classmethod
     def build_s3_key(
+        cls,
         kb_target: str,
         brand: str,
         region: str,
         namespace: str,
         filename: str,
     ) -> str:
-        """Construct an S3 key from path segments.
+        """Construct a sanitized S3 key from path segments.
 
-        Returns ``{kb_target}/{brand}/{region}/{namespace}/{filename}``
-        with no leading/trailing/double slashes.
+        Returns ``{kb_target}/{brand}/{region}/{namespace}/{filename}`` with
+        each segment sanitized via :meth:`_sanitize_segment` so LLM-derived
+        values cannot produce path traversal or inject extra slashes.
         """
-        parts = [kb_target, brand, region, namespace, filename]
-        # Strip slashes from each part, drop empties, join
-        raw = "/".join(p.strip("/") for p in parts if p.strip("/"))
-        # Collapse any remaining double slashes
-        return re.sub(r"/+", "/", raw)
+        # Split filename into stem + extension and sanitize the stem only,
+        # so a trailing ``.md`` on KB content stays usable downstream.
+        if "." in filename:
+            stem, _, ext = filename.rpartition(".")
+            stem = cls._sanitize_segment(stem)
+            ext = cls._sanitize_segment(ext)
+            sanitized_filename = f"{stem}.{ext}" if stem and ext else (stem or ext)
+        else:
+            sanitized_filename = cls._sanitize_segment(filename)
+
+        parts = [
+            cls._sanitize_segment(kb_target),
+            cls._sanitize_segment(brand),
+            cls._sanitize_segment(region),
+            cls._sanitize_segment(namespace),
+            sanitized_filename,
+        ]
+        return "/".join(p for p in parts if p)
 
     @staticmethod
     def _build_metadata_key(s3_key: str) -> str:
@@ -100,14 +155,15 @@ class S3Uploader:
 
         return {"metadataAttributes": attrs}
 
-    def _upload_metadata(self, s3_key: str, file: KBFile) -> bool:
+    async def _upload_metadata(self, s3_key: str, file: KBFile) -> bool:
         """Upload the metadata sidecar JSON for a content file."""
         meta_key = self._build_metadata_key(s3_key)
         meta_doc = self._build_metadata_document(file)
         body = json.dumps(meta_doc, ensure_ascii=False)
 
         logger.info("📋 Uploading metadata sidecar → s3://%s/%s", self._bucket, meta_key)
-        self._client.put_object(
+        await asyncio.to_thread(
+            self._client.put_object,
             Bucket=self._bucket,
             Key=meta_key,
             Body=body.encode("utf-8"),
@@ -116,7 +172,7 @@ class S3Uploader:
         logger.info("📋 Metadata sidecar uploaded: %s (%d bytes)", meta_key, len(body))
         return True
 
-    def upload(self, file: KBFile) -> str | None:
+    async def upload(self, file: KBFile) -> str | None:
         """Upload a KBFile's markdown content and metadata sidecar to S3.
 
         Args:
@@ -147,16 +203,18 @@ class S3Uploader:
             )
 
             logger.info("☁️ Uploading file %s → s3://%s/%s", file.id, self._bucket, s3_key)
-            self._client.put_object(
+            body_bytes = file.md_content.encode("utf-8")
+            await asyncio.to_thread(
+                self._client.put_object,
                 Bucket=self._bucket,
                 Key=s3_key,
-                Body=file.md_content.encode("utf-8"),
+                Body=body_bytes,
                 ContentType="text/markdown; charset=utf-8",
             )
-            logger.info("☁️ Upload successful: %s (%d bytes)", s3_key, len(file.md_content.encode("utf-8")))
+            logger.info("☁️ Upload successful: %s (%d bytes)", s3_key, len(body_bytes))
 
             # Upload metadata sidecar for Bedrock KB filtering
-            self._upload_metadata(s3_key, file)
+            await self._upload_metadata(s3_key, file)
 
             return s3_key
         except ClientError as e:
@@ -172,7 +230,7 @@ class S3Uploader:
             logger.exception("❌ Failed to upload file %s to S3", file.id)
             return None
 
-    def delete(self, s3_key: str) -> bool:
+    async def delete(self, s3_key: str) -> bool:
         """Delete a file and its metadata sidecar from S3.
 
         Args:
@@ -183,13 +241,17 @@ class S3Uploader:
         """
         try:
             logger.info("🗑️ Deleting S3 key: %s", s3_key)
-            self._client.delete_object(Bucket=self._bucket, Key=s3_key)
+            await asyncio.to_thread(
+                self._client.delete_object, Bucket=self._bucket, Key=s3_key,
+            )
             logger.info("🗑️ S3 key deleted successfully: %s", s3_key)
 
             # Cascade: delete the metadata sidecar
             meta_key = self._build_metadata_key(s3_key)
             logger.info("🗑️ Deleting metadata sidecar: %s", meta_key)
-            self._client.delete_object(Bucket=self._bucket, Key=meta_key)
+            await asyncio.to_thread(
+                self._client.delete_object, Bucket=self._bucket, Key=meta_key,
+            )
             logger.info("🗑️ Metadata sidecar deleted: %s", meta_key)
 
             return True
@@ -197,7 +259,7 @@ class S3Uploader:
             logger.exception("❌ Failed to delete S3 key %s", s3_key)
             return False
 
-    def generate_presigned_url(self, s3_uri: str, expires_in: int = 3600) -> str:
+    async def generate_presigned_url(self, s3_uri: str, expires_in: int = 3600) -> str:
         """Generate a presigned download URL for an S3 URI.
 
         Args:
@@ -216,7 +278,8 @@ class S3Uploader:
             key = s3_uri
 
         logger.info("🔗 Generating presigned URL for s3://%s/%s (expires_in=%ds)", bucket, key, expires_in)
-        url = self._client.generate_presigned_url(
+        url = await asyncio.to_thread(
+            self._client.generate_presigned_url,
             "get_object",
             Params={"Bucket": bucket, "Key": key},
             ExpiresIn=expires_in,

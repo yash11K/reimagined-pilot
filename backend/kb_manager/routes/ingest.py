@@ -6,12 +6,13 @@ import logging
 import uuid
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kb_manager.database import get_db
 from kb_manager.queries import jobs as job_queries
+from kb_manager.queries import queue as queue_queries
 from kb_manager.queries import sources as source_queries
 from kb_manager.schemas.ingest import (
     IngestRequest,
@@ -74,17 +75,6 @@ async def _sse_stream_generator(
 # Background task wrappers
 # ---------------------------------------------------------------------------
 
-async def _run_scout(request: Request, job_id: uuid.UUID, source_url: str, steering_prompt: str | None) -> None:
-    pipeline = request.app.state.pipeline
-    # run_scout auto-calls run_process at the end
-    await pipeline.run_scout(job_id, source_url, steering_prompt)
-
-
-async def _run_upload_process(request: Request, job_id: uuid.UUID, file_contents: list[bytes]) -> None:
-    pipeline = request.app.state.pipeline
-    await pipeline.run_upload_process(job_id, file_contents)
-
-
 # ---------------------------------------------------------------------------
 # POST /ingest
 # ---------------------------------------------------------------------------
@@ -93,72 +83,69 @@ async def _run_upload_process(request: Request, job_id: uuid.UUID, file_contents
 async def start_ingest(
     request: Request,
     ingest_request: IngestRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> IngestResponse:
-    """Start ingestion. Creates source + job per URL, triggers auto scout → process."""
+    """Start AEM ingestion. Creates source + job per URL, then enqueues each
+    URL on the worker queue (pre-bound to its job_id) so processing inherits
+    the queue worker's concurrency, retry, heartbeat and graceful-shutdown
+    semantics rather than running as a fire-and-forget ``BackgroundTask``.
+    Callers receive job_ids immediately for SSE subscription.
+    """
+    if not ingest_request.urls:
+        raise HTTPException(status_code=422, detail="urls required for aem connector")
+
     created_jobs: list[JobCreated] = []
+    for url_input in ingest_request.urls:
+        # Normalize: ensure URL ends with .model.json for AEM fetching
+        normalized_url = url_input.url
+        if not normalized_url.endswith(".model.json"):
+            normalized_url = normalized_url.rstrip("/") + ".model.json"
 
-    if ingest_request.connector_type == "aem":
-        if not ingest_request.urls:
-            raise HTTPException(status_code=422, detail="urls required for aem connector")
-
-        for url_input in ingest_request.urls:
-            # Normalize: ensure URL ends with .model.json for AEM fetching
-            normalized_url = url_input.url
-            if not normalized_url.endswith(".model.json"):
-                normalized_url = normalized_url.rstrip("/") + ".model.json"
-
-            source = await source_queries.create_source(
-                db,
-                type="aem",
-                url=normalized_url,
-                region=url_input.region,
-                brand=url_input.brand,
-                kb_target=ingest_request.kb_target,
-                metadata_={
-                    "nav_label": url_input.nav_label,
-                    "nav_section": url_input.nav_section,
-                    "page_path": url_input.page_path,
-                },
-            )
-
-            job = await job_queries.create_job(
-                db,
-                source_id=source.id,
-                status="scouting",
-                steering_prompt=ingest_request.steering_prompt,
-            )
-
-            created_jobs.append(JobCreated(
-                job_id=job.id,
-                source_id=source.id,
-                source_url=normalized_url,
-                status="scouting",
-            ))
-
-            background_tasks.add_task(
-                _run_scout, request, job.id, normalized_url, ingest_request.steering_prompt,
-            )
-
-    elif ingest_request.connector_type == "upload":
         source = await source_queries.create_source(
             db,
-            type="upload",
-            url="upload-batch",
+            type="aem",
+            url=normalized_url,
+            region=url_input.region,
+            brand=url_input.brand,
             kb_target=ingest_request.kb_target,
+            metadata_={
+                "nav_label": url_input.nav_label,
+                "nav_section": url_input.nav_section,
+                "page_path": url_input.page_path,
+            },
         )
+
         job = await job_queries.create_job(
-            db, source_id=source.id, status="processing",
+            db,
+            source_id=source.id,
+            status="scouting",
             steering_prompt=ingest_request.steering_prompt,
         )
+
+        await queue_queries.add_to_queue(
+            db,
+            url=normalized_url,
+            region=url_input.region,
+            brand=url_input.brand,
+            kb_target=ingest_request.kb_target,
+            job_id=job.id,
+        )
+
         created_jobs.append(JobCreated(
-            job_id=job.id, source_id=source.id,
-            source_url="upload-batch", status="processing",
+            job_id=job.id,
+            source_id=source.id,
+            source_url=normalized_url,
+            status="scouting",
         ))
-        background_tasks.add_task(_run_upload_process, request, job.id, [])
 
     await db.commit()
+
+    # Wake the worker so the queued items start immediately rather than
+    # waiting up to QUEUE_POLL_INTERVAL seconds.
+    worker = getattr(request.app.state, "queue_worker", None)
+    if worker is not None:
+        worker.notify()
+
     return IngestResponse(jobs=created_jobs)
 
 

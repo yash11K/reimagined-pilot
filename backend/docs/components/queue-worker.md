@@ -132,12 +132,17 @@ else:
 
 ### Backoff Schedule (base_delay=5s, max_retries=3)
 
-| Retry | Delay | Total Wait |
-|---|---|---|
-| 1st | 10s | 10s |
-| 2nd | 20s | 30s |
-| 3rd | 40s | 70s |
-| Permanent fail | — | — |
+| Retry | Delay before next attempt |
+|---|---|
+| 1st | 10s |
+| 2nd | 20s |
+| 3rd | 40s |
+| Permanent fail | — |
+
+> "Delay" is the per-retry wait set on `next_attempt_at`. A cumulative
+> "total wait since first failure" is **not** tracked anywhere — every
+> requeue resets `started_at`, so observability of total elapsed time
+> would have to be reconstructed from logs or a separate metric.
 
 ---
 

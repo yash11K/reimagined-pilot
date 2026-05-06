@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { errorWithRef } from "@/lib/errorRef";
 import { useToast } from "@/contexts/ToastContext";
 import { kbSync } from "@/api/endpoints";
 import { streamKbChat, streamKbSearch } from "@/api/kbStream";
@@ -82,7 +83,7 @@ export default function KbPlayground() {
       if (!ctrl.signal.aborted) {
         const msg = e instanceof Error ? e.message : "Search failed";
         setSearchError(msg);
-        toast.error("KB search failed", msg);
+        toast.error("KB search failed", errorWithRef(e, "Search failed"));
       }
     } finally {
       if (abortRef.current === ctrl) abortRef.current = null;
@@ -138,7 +139,7 @@ export default function KbPlayground() {
             t.id === turnId ? { ...t, error: msg, done: true } : t,
           ),
         );
-        toast.error("KB chat failed", msg);
+        toast.error("KB chat failed", errorWithRef(e, "Chat failed"));
       }
     } finally {
       if (abortRef.current === ctrl) abortRef.current = null;
@@ -156,8 +157,7 @@ export default function KbPlayground() {
     onSuccess: (res) =>
       toast.success("KB re-index started", `Job ${res.ingestion_job_id}`),
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Sync failed";
-      toast.error("KB re-index failed", msg);
+      toast.error("KB re-index failed", errorWithRef(e, "Sync failed"));
     },
   });
 
@@ -388,6 +388,7 @@ function ChatTurnView({
 }) {
   const [openCites, setOpenCites] = useState(false);
   const pending = isLast && streaming && !turn.done;
+  const awaitingAnswer = pending && !turn.answer;
 
   return (
     <div className="space-y-2">
@@ -404,11 +405,13 @@ function ChatTurnView({
         </span>
         {turn.error ? (
           <span className="text-status-err">Error: {turn.error}</span>
-        ) : (
-          <span className="whitespace-pre-wrap">
-            {turn.answer}
-            {pending && <span className="ml-0.5 animate-pulse">▍</span>}
+        ) : awaitingAnswer ? (
+          <span className="inline-flex items-center gap-2 text-ink-muted">
+            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-ink-muted border-t-transparent" />
+            Thinking…
           </span>
+        ) : (
+          <span className="whitespace-pre-wrap">{turn.answer}</span>
         )}
 
         {turn.sources.length > 0 && (

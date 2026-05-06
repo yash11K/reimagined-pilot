@@ -70,37 +70,7 @@ class ExtractedFile:
 
 ---
 
-## 3. Link Triage Agent
-
-**File:** `agents/link_triage.py`
-**Model:** Haiku
-**Purpose:** Deep classification of links that the Discovery Agent couldn't confidently classify.
-
-### Input
-- Source context (the card/teaser text where the link was found)
-- Linked page's pruned AEM JSON structure
-
-### Output: `TriageResult`
-```python
-@dataclass
-class TriageResult:
-    classification: str   # expansion | sibling | navigation | uncertain
-    reason: str
-    has_sub_links: bool
-    sub_link_count: int
-```
-
-### Classifications
-| Classification | Meaning | Action |
-|---|---|---|
-| `expansion` | Detail page for a topic on the source page | Merge with parent during extraction |
-| `sibling` | Peer page at the same level | Queue for independent processing |
-| `navigation` | Navigation/utility link | Skip |
-| `uncertain` | Can't determine | Mark needs_confirmation |
-
----
-
-## 4. QA Agent
+## 3. QA Agent
 
 **File:** `agents/qa.py`
 **Model:** Haiku
@@ -129,7 +99,7 @@ reasoning: str (1-3 sentences)
 
 ---
 
-## 5. Uniqueness Agent
+## 4. Uniqueness Agent
 
 **File:** `agents/qa.py` (same file as QA Agent)
 **Model:** Haiku (with tool-use)
@@ -158,7 +128,7 @@ The Uniqueness Agent has access to a Bedrock KB Retrieve tool. It queries the ex
 
 ---
 
-## 6. Metadata Enricher
+## 5. Metadata Enricher
 
 **File:** `agents/metadata_enricher.py`
 **Model:** Haiku

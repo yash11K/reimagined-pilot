@@ -81,8 +81,8 @@ async def list_files(
         query = query.where(KBFile.region == region)
         count_query = count_query.where(KBFile.region == region)
     if brand is not None:
-        query = query.where(KBFile.brand.ilike(f"%{brand}%"))
-        count_query = count_query.where(KBFile.brand.ilike(f"%{brand}%"))
+        query = query.where(KBFile.brand == brand)
+        count_query = count_query.where(KBFile.brand == brand)
     if kb_target is not None:
         query = query.where(KBFile.kb_target == kb_target)
         count_query = count_query.where(KBFile.kb_target == kb_target)
@@ -147,21 +147,23 @@ async def delete_file(db: AsyncSession, file_id: uuid.UUID) -> bool:
 async def count_files_by_status(
     db: AsyncSession, source_id: uuid.UUID,
 ) -> dict[str, int]:
-    """Count files grouped by status for a given source (via junction table)."""
-    base = (
-        select(func.count())
+    """Count files grouped by status for a given source (via junction table).
+
+    Single ``GROUP BY status`` round-trip rather than four separate counts.
+    """
+    stmt = (
+        select(KBFile.status, func.count())
         .select_from(KBFile)
         .join(source_kb_files, source_kb_files.c.kb_file_id == KBFile.id)
         .where(source_kb_files.c.source_id == source_id)
+        .group_by(KBFile.status)
     )
-    total = (await db.execute(base)).scalar_one()
-    approved = (await db.execute(base.where(KBFile.status == "approved"))).scalar_one()
-    pending = (await db.execute(base.where(KBFile.status == "pending_review"))).scalar_one()
-    rejected = (await db.execute(base.where(KBFile.status == "rejected"))).scalar_one()
+    result = await db.execute(stmt)
+    by_status: dict[str, int] = {row[0]: row[1] for row in result.all()}
 
     return {
-        "total": total,
-        "approved": approved,
-        "pending_review": pending,
-        "rejected": rejected,
+        "total": sum(by_status.values()),
+        "approved": by_status.get("approved", 0),
+        "pending_review": by_status.get("pending_review", 0),
+        "rejected": by_status.get("rejected", 0),
     }

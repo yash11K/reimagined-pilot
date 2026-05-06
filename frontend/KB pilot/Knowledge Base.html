@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1440,initial-scale=1" />
+    <title>Knowledge Base — Sources & Ingestions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg:      { DEFAULT: "#F7F8FA", surface: "#FFFFFF", muted: "#F1F3F6" },
+              ink:     { DEFAULT: "#0F172A", soft: "#334155", muted: "#64748B", faint: "#94A3B8" },
+              line:    { DEFAULT: "#E2E8F0", soft: "#EEF1F5" },
+              sidebar: { DEFAULT: "#0B1220", hover: "#111A2E", active: "#1B2742", text: "#CBD5E1", textMuted: "#64748B" },
+              brand:   { DEFAULT: "#D4001A", hover: "#B30016", soft: "#FEE2E5" },
+              status:  {
+                ok: "#16A34A", okSoft: "#DCFCE7",
+                warn: "#D97706", warnSoft: "#FEF3C7",
+                err: "#DC2626", errSoft: "#FEE2E2",
+                info: "#2563EB", infoSoft: "#DBEAFE",
+                neutral: "#64748B", neutralSoft: "#F1F5F9",
+              },
+            },
+            fontFamily: {
+              sans: ["Inter", "system-ui", "sans-serif"],
+              mono: ["JetBrains Mono", "ui-monospace", "monospace"],
+            },
+            boxShadow: {
+              card: "0 1px 2px 0 rgba(15, 23, 42, 0.04), 0 1px 3px 0 rgba(15, 23, 42, 0.06)",
+              cardHover: "0 4px 12px -2px rgba(15, 23, 42, 0.08)",
+              pop: "0 12px 32px -8px rgba(15, 23, 42, 0.18), 0 2px 6px -2px rgba(15, 23, 42, 0.08)",
+            },
+            borderRadius: { xl: "12px" },
+          },
+        },
+      };
+    </script>
+    <style>
+      html, body, #root { height: 100%; }
+      body { font-family: "Inter", system-ui, sans-serif; color: #0F172A; background: #F7F8FA; -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01"; }
+      .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+      .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+      .scrollbar-dark::-webkit-scrollbar { width: 8px; height: 8px; }
+      .scrollbar-dark::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+      .scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
+
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+      .anim-fade-in { animation: fadeIn 200ms ease-out both; }
+      @keyframes streamIn { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: translateX(0); } }
+      .anim-stream-in { animation: streamIn 240ms ease-out both; }
+      @keyframes pulseRing {
+        0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
+        70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+      }
+      .pulse-ring { animation: pulseRing 1.6s infinite; }
+      @keyframes barberpole {
+        0% { background-position: 0 0; }
+        100% { background-position: 24px 0; }
+      }
+      .barber {
+        background-image: linear-gradient(45deg, rgba(37,99,235,.18) 25%, transparent 25%, transparent 50%, rgba(37,99,235,.18) 50%, rgba(37,99,235,.18) 75%, transparent 75%, transparent);
+        background-size: 24px 24px;
+        animation: barberpole 1.2s linear infinite;
+      }
+
+      /* Tweak panel placement */
+      .tweaks-panel-host { right: 16px; bottom: 16px; }
+    </style>
+
+    <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel" src="kb-data.jsx"></script>
+    <script type="text/babel" src="kb-primitives.jsx"></script>
+    <script type="text/babel" src="kb-shell.jsx"></script>
+    <script type="text/babel" src="kb-list.jsx"></script>
+    <script type="text/babel" src="kb-detail.jsx"></script>
+    <script type="text/babel" src="tweaks-panel.jsx"></script>
+    <script type="text/babel" src="kb-app.jsx"></script>
+  </body>
+</html>

@@ -115,19 +115,6 @@ Run the full QA pipeline on a single extracted file and persist the result.
 
 ---
 
-## Method: `run_upload_process(job_id, files)`
-
-### Purpose
-Handle direct file uploads (not AEM crawling). Simpler flow — no scout phase.
-
-### Flow
-
-1. For each uploaded file: read content, wrap as `ExtractedFile`
-2. Run `_process_single_file()` (same QA pipeline as AEM flow)
-3. Finalise job, trigger KB sync
-
----
-
 ## Helper: `_extract_modify_date(aem_json)`
 
 Searches for `jcr:lastModified`, `cq:lastModified`, or `lastModified` in the AEM JSON root and `jcr:content` node. Falls back to `datetime.now(UTC)`.

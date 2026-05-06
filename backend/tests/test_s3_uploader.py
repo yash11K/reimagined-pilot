@@ -80,9 +80,10 @@ class TestUpload:
             setattr(file, k, v)
         return file
 
+    @pytest.mark.asyncio
     @patch("kb_manager.services.s3_uploader.get_settings")
     @patch("kb_manager.services.s3_uploader.boto3")
-    def test_upload_success_returns_key(self, mock_boto3, mock_settings):
+    async def test_upload_success_returns_key(self, mock_boto3, mock_settings):
         mock_settings.return_value = MagicMock(
             S3_BUCKET_NAME="my-bucket", AWS_REGION="us-east-1"
         )
@@ -91,7 +92,7 @@ class TestUpload:
 
         uploader = S3Uploader()
         file = self._make_file()
-        result = uploader.upload(file)
+        result = await uploader.upload(file)
 
         assert result is not None
         assert result.startswith("public/avis/nam/")
@@ -99,9 +100,10 @@ class TestUpload:
         # Should upload both the .md file and the .metadata.json sidecar
         assert mock_client.put_object.call_count == 2
 
+    @pytest.mark.asyncio
     @patch("kb_manager.services.s3_uploader.get_settings")
     @patch("kb_manager.services.s3_uploader.boto3")
-    def test_upload_failure_returns_none(self, mock_boto3, mock_settings):
+    async def test_upload_failure_returns_none(self, mock_boto3, mock_settings):
         mock_settings.return_value = MagicMock(
             S3_BUCKET_NAME="my-bucket", AWS_REGION="us-east-1"
         )
@@ -111,13 +113,14 @@ class TestUpload:
 
         uploader = S3Uploader()
         file = self._make_file()
-        result = uploader.upload(file)
+        result = await uploader.upload(file)
 
         assert result is None
 
+    @pytest.mark.asyncio
     @patch("kb_manager.services.s3_uploader.get_settings")
     @patch("kb_manager.services.s3_uploader.boto3")
-    def test_upload_with_no_brand_uses_unknown(self, mock_boto3, mock_settings):
+    async def test_upload_with_no_brand_uses_unknown(self, mock_boto3, mock_settings):
         mock_settings.return_value = MagicMock(
             S3_BUCKET_NAME="my-bucket", AWS_REGION="us-east-1"
         )
@@ -126,7 +129,7 @@ class TestUpload:
 
         uploader = S3Uploader()
         file = self._make_file(brand=None, region=None)
-        result = uploader.upload(file)
+        result = await uploader.upload(file)
 
         assert result is not None
         assert "unknown" in result
@@ -139,9 +142,10 @@ class TestUpload:
 class TestDelete:
     """Tests for S3 delete (used for superseding)."""
 
+    @pytest.mark.asyncio
     @patch("kb_manager.services.s3_uploader.get_settings")
     @patch("kb_manager.services.s3_uploader.boto3")
-    def test_delete_success(self, mock_boto3, mock_settings):
+    async def test_delete_success(self, mock_boto3, mock_settings):
         mock_settings.return_value = MagicMock(
             S3_BUCKET_NAME="my-bucket", AWS_REGION="us-east-1"
         )
@@ -149,7 +153,7 @@ class TestDelete:
         mock_boto3.client.return_value = mock_client
 
         uploader = S3Uploader()
-        assert uploader.delete("public/avis/nam/ns/file.md") is True
+        assert await uploader.delete("public/avis/nam/ns/file.md") is True
         # Should delete both the .md file and the .metadata.json sidecar
         assert mock_client.delete_object.call_count == 2
         mock_client.delete_object.assert_any_call(
@@ -159,9 +163,10 @@ class TestDelete:
             Bucket="my-bucket", Key="public/avis/nam/ns/file.md.metadata.json"
         )
 
+    @pytest.mark.asyncio
     @patch("kb_manager.services.s3_uploader.get_settings")
     @patch("kb_manager.services.s3_uploader.boto3")
-    def test_delete_failure(self, mock_boto3, mock_settings):
+    async def test_delete_failure(self, mock_boto3, mock_settings):
         mock_settings.return_value = MagicMock(
             S3_BUCKET_NAME="my-bucket", AWS_REGION="us-east-1"
         )
@@ -170,7 +175,7 @@ class TestDelete:
         mock_boto3.client.return_value = mock_client
 
         uploader = S3Uploader()
-        assert uploader.delete("some/key.md") is False
+        assert await uploader.delete("some/key.md") is False
 
 
 # ---------------------------------------------------------------------------
@@ -180,9 +185,10 @@ class TestDelete:
 class TestGeneratePresignedUrl:
     """Tests for presigned URL generation (Requirement 19.4)."""
 
+    @pytest.mark.asyncio
     @patch("kb_manager.services.s3_uploader.get_settings")
     @patch("kb_manager.services.s3_uploader.boto3")
-    def test_presigned_url_from_s3_uri(self, mock_boto3, mock_settings):
+    async def test_presigned_url_from_s3_uri(self, mock_boto3, mock_settings):
         mock_settings.return_value = MagicMock(
             S3_BUCKET_NAME="my-bucket", AWS_REGION="us-east-1"
         )
@@ -191,7 +197,7 @@ class TestGeneratePresignedUrl:
         mock_boto3.client.return_value = mock_client
 
         uploader = S3Uploader()
-        url = uploader.generate_presigned_url("s3://other-bucket/some/key.md")
+        url = await uploader.generate_presigned_url("s3://other-bucket/some/key.md")
 
         assert url == "https://presigned.example.com"
         mock_client.generate_presigned_url.assert_called_once_with(
@@ -200,9 +206,10 @@ class TestGeneratePresignedUrl:
             ExpiresIn=3600,
         )
 
+    @pytest.mark.asyncio
     @patch("kb_manager.services.s3_uploader.get_settings")
     @patch("kb_manager.services.s3_uploader.boto3")
-    def test_presigned_url_from_plain_key(self, mock_boto3, mock_settings):
+    async def test_presigned_url_from_plain_key(self, mock_boto3, mock_settings):
         mock_settings.return_value = MagicMock(
             S3_BUCKET_NAME="my-bucket", AWS_REGION="us-east-1"
         )
@@ -211,7 +218,7 @@ class TestGeneratePresignedUrl:
         mock_boto3.client.return_value = mock_client
 
         uploader = S3Uploader()
-        url = uploader.generate_presigned_url("public/avis/nam/ns/file.md")
+        url = await uploader.generate_presigned_url("public/avis/nam/ns/file.md")
 
         mock_client.generate_presigned_url.assert_called_once_with(
             "get_object",

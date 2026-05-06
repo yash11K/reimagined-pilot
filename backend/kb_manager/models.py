@@ -107,7 +107,9 @@ class IngestionJob(Base):
         server_default=func.gen_random_uuid(),
     )
     source_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("sources.id"), nullable=False,
+        UUID(as_uuid=True),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
     )
     status: Mapped[str] = mapped_column(Text, nullable=False)
     # scouting | awaiting_confirmation | processing | completed | failed
@@ -148,7 +150,9 @@ class KBFile(Base):
         server_default=func.gen_random_uuid(),
     )
     job_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("ingestion_jobs.id"), nullable=False,
+        UUID(as_uuid=True),
+        ForeignKey("ingestion_jobs.id", ondelete="CASCADE"),
+        nullable=False,
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     md_content: Mapped[str] = mapped_column(Text, nullable=False)  # pure markdown, no YAML

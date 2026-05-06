@@ -28,7 +28,16 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   }, [brand]);
 
   const setBrand = (b: BrandKey) => setBrandState(b);
-  const brandParam = () => (brand === "all" ? undefined : brand);
+
+  // API uses exact match against DB-stored brand values.
+  // "abg" is the UI key for "Avis Budget Group" but the DB stores "avis_budget".
+  const BRAND_TO_API: Record<BrandKey, string | undefined> = {
+    all: undefined,
+    abg: "avis_budget",
+    avis: "avis",
+    budget: "budget",
+  };
+  const brandParam = () => BRAND_TO_API[brand];
 
   return (
     <BrandContext.Provider value={{ brand, setBrand, brandParam }}>

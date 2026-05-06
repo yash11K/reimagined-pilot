@@ -16,6 +16,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from kb_manager.config import get_settings
+from kb_manager.logging_config import bind_log_context, clear_log_context
 from kb_manager.queries import queue as queue_queries
 from kb_manager.queries import sources as source_queries
 from kb_manager.queries import jobs as job_queries
@@ -75,6 +76,11 @@ class QueueWorker:
     def active_count(self) -> int:
         """Number of items currently being processed."""
         return self._max_workers - self._semaphore._value
+
+    @property
+    def max_workers(self) -> int:
+        """Configured concurrency cap (semaphore size)."""
+        return self._max_workers
 
     # ------------------------------------------------------------------
     # Main poll loop
@@ -191,6 +197,7 @@ class QueueWorker:
         t0 = time.perf_counter()
         item_id = item.id
         url = item.url
+        bind_log_context(worker_id=worker_id, queue_item_id=str(item_id)[:8])
         logger.info("🏭 [w%d][queue=%s] Processing: %s", worker_id, str(item_id)[:8], url)
 
         await self._stream.publish_event(
@@ -201,18 +208,25 @@ class QueueWorker:
         )
 
         try:
-            async with self._session_factory() as db:
-                source = await source_queries.create_source(
-                    db,
-                    type="aem",
-                    url=url,
-                    region=item.region,
-                    brand=item.brand,
-                    kb_target=item.kb_target,
-                )
-                job = await job_queries.create_job(db, source_id=source.id, status="scouting")
-                await db.commit()
-                job_id = job.id
+            # When the API layer pre-created a Source + IngestionJob (so the
+            # caller can subscribe to scout-stream immediately), the queue
+            # item carries its job_id. Otherwise this is a "raw" enqueue
+            # (e.g. POST /queue) and the worker creates them itself.
+            if item.job_id is not None:
+                job_id = item.job_id
+            else:
+                async with self._session_factory() as db:
+                    source = await source_queries.create_source(
+                        db,
+                        type="aem",
+                        url=url,
+                        region=item.region,
+                        brand=item.brand,
+                        kb_target=item.kb_target,
+                    )
+                    job = await job_queries.create_job(db, source_id=source.id, status="scouting")
+                    await db.commit()
+                    job_id = job.id
 
             await self._stream.publish_event(
                 "progress", "phase_changed",

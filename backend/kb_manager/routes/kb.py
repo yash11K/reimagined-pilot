@@ -13,23 +13,15 @@ from kb_manager.services.bedrock_kb import BedrockKBClient
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Shared client — initialised lazily on first request
-_kb_client: BedrockKBClient | None = None
-
-
-def _get_client() -> BedrockKBClient:
-    global _kb_client
-    if _kb_client is None:
-        _kb_client = BedrockKBClient()
-    return _kb_client
-
 
 # ---------------------------------------------------------------------------
 # SSE generators
 # ---------------------------------------------------------------------------
 
 
-async def _search_sse_generator(request: SearchRequest) -> AsyncGenerator[str, None]:
+async def _search_sse_generator(
+    request: SearchRequest, client: BedrockKBClient,
+) -> AsyncGenerator[str, None]:
     """Stream Bedrock Retrieve results as SSE events.
 
     Events emitted:
@@ -37,9 +29,8 @@ async def _search_sse_generator(request: SearchRequest) -> AsyncGenerator[str, N
         error   — if the Bedrock call fails
         search_complete — final event with total_results count
     """
-    client = _get_client()
     try:
-        results = client.retrieve(
+        results = await client.retrieve(
             query=request.query,
             kb_target=request.kb_target,
             limit=request.limit,
@@ -56,18 +47,24 @@ async def _search_sse_generator(request: SearchRequest) -> AsyncGenerator[str, N
     yield f"event: search_complete\ndata: {complete_data}\n\n"
 
 
-async def _chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
-    """Stream RAG response as SSE events.
+async def _chat_sse_generator(
+    request: ChatRequest, client: BedrockKBClient,
+) -> AsyncGenerator[str, None]:
+    """Emit the RAG response as SSE events.
+
+    Bedrock ``retrieve_and_generate`` is **non-streaming** — the call blocks
+    until the full answer is ready. We deliberately emit one ``answer``
+    event with the complete text instead of fake-chunking 200-char slices,
+    so consumers don't mistake this for real token streaming.
 
     Events emitted:
         sources        — retrieved citations used as context
-        token          — generated answer text (single chunk; Bedrock R&G is non-streaming)
+        answer         — full generated text (single payload)
         error          — if the Bedrock call fails
         chat_complete  — final event
     """
-    client = _get_client()
     try:
-        rag = client.retrieve_and_generate(
+        rag = await client.retrieve_and_generate(
             query=request.query,
             kb_target=request.kb_target,
             context_limit=request.context_limit,
@@ -77,17 +74,11 @@ async def _chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]
         yield f"event: error\ndata: {error_data}\n\n"
         return
 
-    # Emit sources
     sources_data = json.dumps({"sources": rag["citations"]})
     yield f"event: sources\ndata: {sources_data}\n\n"
 
-    # Emit the generated answer — chunked into ~200-char pieces for
-    # a streaming feel on the client side.
-    text = rag["output_text"]
-    chunk_size = 200
-    for i in range(0, len(text), chunk_size):
-        chunk = text[i : i + chunk_size]
-        yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
+    answer_data = json.dumps({"text": rag["output_text"]})
+    yield f"event: answer\ndata: {answer_data}\n\n"
 
     yield f"event: chat_complete\ndata: {json.dumps({})}\n\n"
 
@@ -98,14 +89,15 @@ async def _chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]
 
 
 @router.post("/kb/search")
-async def kb_search(request: SearchRequest) -> StreamingResponse:
+async def kb_search(request: SearchRequest, req: Request) -> StreamingResponse:
     """Stream search results from the Bedrock Knowledge Base via SSE."""
     logger.info(
         "🔍 POST /kb/search — query='%s', kb_target=%s, limit=%d",
         request.query, request.kb_target, request.limit,
     )
+    client: BedrockKBClient = req.app.state.bedrock_kb_client
     return StreamingResponse(
-        _search_sse_generator(request),
+        _search_sse_generator(request, client),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -121,11 +113,12 @@ async def kb_search(request: SearchRequest) -> StreamingResponse:
 
 
 @router.post("/kb/chat")
-async def kb_chat(request: ChatRequest) -> StreamingResponse:
+async def kb_chat(request: ChatRequest, req: Request) -> StreamingResponse:
     """RAG chat — retrieve context from Bedrock KB then stream generated answer."""
     logger.info("💬 POST /kb/chat — query='%s', kb_target=%s", request.query, request.kb_target)
+    client: BedrockKBClient = req.app.state.bedrock_kb_client
     return StreamingResponse(
-        _chat_sse_generator(request),
+        _chat_sse_generator(request, client),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -145,7 +138,7 @@ async def kb_download(request: DownloadRequest, req: Request) -> dict:
     """Return a presigned S3 download URL for the given s3_uri."""
     logger.info("📥 POST /kb/download — s3_uri=%s", request.s3_uri)
     s3_uploader = req.app.state.s3_uploader
-    url = s3_uploader.generate_presigned_url(request.s3_uri)
+    url = await s3_uploader.generate_presigned_url(request.s3_uri)
     return {"download_url": url}
 
 
@@ -155,14 +148,14 @@ async def kb_download(request: DownloadRequest, req: Request) -> dict:
 
 
 @router.post("/kb/sync", response_model=SyncResponse)
-async def kb_sync() -> SyncResponse:
+async def kb_sync(req: Request) -> SyncResponse:
     """Trigger a Bedrock Knowledge Base data-source sync.
 
     Kicks off a StartIngestionJob so Bedrock re-indexes the S3 data source.
     """
     logger.info("🔄 POST /kb/sync — triggering manual KB sync")
-    client = _get_client()
-    ingestion_id = client.start_sync()
+    client: BedrockKBClient = req.app.state.bedrock_kb_client
+    ingestion_id = await client.start_sync()
     if ingestion_id is None:
         raise HTTPException(
             status_code=503,
