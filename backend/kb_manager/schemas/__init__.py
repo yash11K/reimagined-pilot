@@ -17,9 +17,15 @@ from kb_manager.schemas.ingest import (
     JobCreated,
 )
 from kb_manager.schemas.kb import ChatRequest, DownloadRequest, SearchRequest
+from kb_manager.schemas.jobs import RunPageResponse
 from kb_manager.schemas.sources import (
     FileStats,
+    FilterCounts,
+    ReingestRequest,
+    ReingestResponse,
+    RuntimeInfo,
     SourceDetail,
+    SourceListResponse,
     SourceSummary,
 )
 
@@ -37,8 +43,14 @@ __all__ = [
     "RejectRequest",
     "EditRequest",
     "FileStats",
+    "FilterCounts",
+    "ReingestRequest",
+    "ReingestResponse",
+    "RuntimeInfo",
+    "RunPageResponse",
     "SourceSummary",
     "SourceDetail",
+    "SourceListResponse",
     "SearchRequest",
     "ChatRequest",
     "DownloadRequest",

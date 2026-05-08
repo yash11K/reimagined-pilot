@@ -336,6 +336,9 @@ async def test_scout_stores_results_and_sets_status():
                 mock_jobs.update_job = AsyncMock()
                 mock_jobs.get_job = AsyncMock(return_value=FakeJob(source=FakeSource()))
                 mock_sources.mark_scouted = AsyncMock()
+                mock_sources.set_display_status = AsyncMock()
+                mock_sources.set_active_job = AsyncMock()
+                mock_sources.set_active_file = AsyncMock()
 
                 # Also mock run_process to prevent it from running
                 with patch.object(pipeline, "run_process", new=AsyncMock()):
@@ -429,9 +432,14 @@ async def test_scout_publishes_sse_events():
                 mock_jobs.update_job = AsyncMock()
                 mock_jobs.update_job_status = AsyncMock()
                 mock_jobs.get_job = AsyncMock(return_value=fake_job)
+                mock_jobs.create_job = AsyncMock(return_value=fake_job)
                 mock_sources.mark_scouted = AsyncMock()
                 mock_sources.get_source_by_url = AsyncMock(return_value=None)
                 mock_sources.create_source = AsyncMock(return_value=fake_discovered_source)
+                mock_sources.update_source = AsyncMock()
+                mock_sources.set_display_status = AsyncMock()
+                mock_sources.set_active_job = AsyncMock()
+                mock_sources.set_active_file = AsyncMock()
                 mock_queue.add_to_queue = AsyncMock()
 
                 with patch.object(pipeline, "run_process", new=AsyncMock()):

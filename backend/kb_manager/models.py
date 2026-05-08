@@ -1,7 +1,11 @@
-"""SQLAlchemy ORM models for the KB Manager database.
+"""SQLAlchemy ORM models — v2 simplified data model.
 
 Tables: sources, ingestion_jobs, source_kb_files (junction), kb_files,
-nav_tree_cache, queue_items.
+queue_items, run_pages.
+
+Key denormalizations on `sources`:
+  - display_status / active_job_id / active_file_id  → app-side maintained
+  - run_count / last_run_at                          → DB-trigger maintained
 """
 
 import uuid
@@ -41,13 +45,15 @@ source_kb_files = Table(
 
 
 # ---------------------------------------------------------------------------
-# Source — the single unified entity for any content URL
+# Source — unified entity for any content URL (manual or discovered)
 # ---------------------------------------------------------------------------
 
 class Source(Base):
     __tablename__ = "sources"
     __table_args__ = (
         UniqueConstraint("type", "url", name="uq_sources_type_url"),
+        Index("ix_sources_listing", "origin", "status", "created_at"),
+        Index("ix_sources_filters", "brand", "region", "kb_target"),
         Index("ix_sources_status", "status"),
     )
 
@@ -58,35 +64,66 @@ class Source(Base):
     )
     url: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(Text, nullable=False)  # aem | upload | manual
+    origin: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'manual'"),
+    )  # manual | discovered
+
     region: Mapped[str | None] = mapped_column(Text, nullable=True)
     brand: Mapped[str | None] = mapped_column(Text, nullable=True)
     kb_target: Mapped[str] = mapped_column(Text, nullable=False)
+    language: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # --- Lifecycle flags ---
-    is_scouted: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
-    is_ingested: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
-
-    # --- Status: active | needs_confirmation | dismissed | ingested | failed ---
+    # active | needs_confirmation | dismissed | denied | failed | ingested
     status: Mapped[str] = mapped_column(
         Text, nullable=False, server_default=text("'active'"),
     )
 
-    # --- Scout summary (stored after scout phase) ---
-    scout_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # idle | queued | discovering | extracting | qa | failed | needs_review
+    display_status: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'idle'"),
+    )
 
-    # --- Metadata ---
+    # --- Denormalized pointers / counters ---
+    active_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingestion_jobs.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+    )
+    active_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kb_files.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+    )
+    run_count: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, server_default=text("0"),
+    )
+    last_run_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True,
+    )
+
+    # --- Scout summary + freeform metadata ---
+    scout_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
-    last_ingested_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
     created_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(),
     )
 
-    # --- Relationships ---
+    # --- Provenance: parent source for discovered URLs ---
+    parent_source_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("sources.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # --- Relationships (lazy="raise" — must be opted into per query) ---
     ingestion_jobs: Mapped[list["IngestionJob"]] = relationship(
-        back_populates="source", lazy="selectin",
+        back_populates="source",
+        lazy="raise",
+        foreign_keys="IngestionJob.source_id",
     )
     kb_files: Mapped[list["KBFile"]] = relationship(
-        secondary=source_kb_files, back_populates="sources", lazy="selectin",
+        secondary=source_kb_files, back_populates="sources", lazy="raise",
     )
 
 
@@ -97,8 +134,8 @@ class Source(Base):
 class IngestionJob(Base):
     __tablename__ = "ingestion_jobs"
     __table_args__ = (
+        Index("ix_ingestion_jobs_source_status", "source_id", "status"),
         Index("ix_ingestion_jobs_status", "status"),
-        Index("ix_ingestion_jobs_source_id", "source_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -125,10 +162,13 @@ class IngestionJob(Base):
         TIMESTAMP(timezone=True), nullable=True,
     )
 
-    # Relationships
-    source: Mapped["Source"] = relationship(back_populates="ingestion_jobs", lazy="selectin")
+    source: Mapped["Source"] = relationship(
+        back_populates="ingestion_jobs",
+        lazy="raise",
+        foreign_keys=[source_id],
+    )
     kb_files: Mapped[list["KBFile"]] = relationship(
-        back_populates="job", lazy="selectin",
+        back_populates="job", lazy="raise",
     )
 
 
@@ -155,15 +195,15 @@ class KBFile(Base):
         nullable=False,
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
-    md_content: Mapped[str] = mapped_column(Text, nullable=False)  # pure markdown, no YAML
-    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)  # primary source URL (denormalized for quick access)
+    md_content: Mapped[str] = mapped_column(Text, nullable=False)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     region: Mapped[str | None] = mapped_column(Text, nullable=True)
     brand: Mapped[str | None] = mapped_column(Text, nullable=True)
     kb_target: Mapped[str] = mapped_column(Text, nullable=False)
+    language: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # --- New metadata fields for Bedrock filtering ---
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
-    visibility: Mapped[str | None] = mapped_column(Text, nullable=True)  # public | internal | restricted
+    visibility: Mapped[str | None] = mapped_column(Text, nullable=True)
     tags: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
 
     modify_date: Mapped[datetime | None] = mapped_column(
@@ -172,7 +212,6 @@ class KBFile(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False)
     # pending_review | approved | rejected | superseded
 
-    # --- QA verdicts ---
     quality_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
     quality_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
     uniqueness_verdict: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -181,10 +220,8 @@ class KBFile(Base):
         ARRAY(UUID(as_uuid=True)), nullable=True,
     )
 
-    # --- S3 ---
     s3_key: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # --- Review ---
     reviewed_by: Mapped[str | None] = mapped_column(Text, nullable=True)
     review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -192,39 +229,14 @@ class KBFile(Base):
         TIMESTAMP(timezone=True), server_default=func.now(),
     )
 
-    # --- Relationships ---
-    job: Mapped["IngestionJob"] = relationship(back_populates="kb_files")
+    job: Mapped["IngestionJob"] = relationship(back_populates="kb_files", lazy="raise")
     sources: Mapped[list["Source"]] = relationship(
-        secondary=source_kb_files, back_populates="kb_files", lazy="selectin",
+        secondary=source_kb_files, back_populates="kb_files", lazy="raise",
     )
 
 
 # ---------------------------------------------------------------------------
-# NavTreeCache
-# ---------------------------------------------------------------------------
-
-class NavTreeCache(Base):
-    __tablename__ = "nav_tree_cache"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        server_default=func.gen_random_uuid(),
-    )
-    root_url: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
-    brand: Mapped[str | None] = mapped_column(Text, nullable=True)
-    region: Mapped[str | None] = mapped_column(Text, nullable=True)
-    tree_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    fetched_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True,
-    )
-    expires_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True,
-    )
-
-
-# ---------------------------------------------------------------------------
-# QueueItem — worker queue for automated ingestion
+# QueueItem — worker queue (rows deleted on completion; no history)
 # ---------------------------------------------------------------------------
 
 class QueueItem(Base):
@@ -232,8 +244,8 @@ class QueueItem(Base):
     __table_args__ = (
         Index("ix_queue_items_status", "status"),
         Index(
-            "uq_queue_active_url",
-            "url",
+            "uq_queue_active_source",
+            "source_id",
             unique=True,
             postgresql_where=text("status IN ('queued', 'processing')"),
         ),
@@ -244,21 +256,21 @@ class QueueItem(Base):
         primary_key=True,
         server_default=func.gen_random_uuid(),
     )
-    url: Mapped[str] = mapped_column(Text, nullable=False)
-    region: Mapped[str | None] = mapped_column(Text, nullable=True)
-    brand: Mapped[str | None] = mapped_column(Text, nullable=True)
-    kb_target: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'public'"),
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingestion_jobs.id", ondelete="SET NULL"),
+        nullable=True,
     )
     status: Mapped[str] = mapped_column(
         Text, nullable=False, server_default=text("'queued'"),
-    )  # queued | processing | completed | failed
-    job_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("ingestion_jobs.id"), nullable=True,
-    )
+    )  # queued | processing  (completed/failed rows are deleted)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # --- Retry support ---
     retry_count: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, server_default=text("0"),
     )
@@ -269,12 +281,12 @@ class QueueItem(Base):
         TIMESTAMP(timezone=True), nullable=True,
     )
 
-    # --- Heartbeat for stale detection ---
     last_heartbeat: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True,
     )
 
-    # --- Priority (higher = processed first) ---
+    worker_id: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+
     priority: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, server_default=text("0"),
     )
@@ -285,9 +297,40 @@ class QueueItem(Base):
     started_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True,
     )
-    completed_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True,
+
+    source: Mapped["Source"] = relationship(lazy="raise")
+    job: Mapped["IngestionJob | None"] = relationship(lazy="raise")
+
+
+# ---------------------------------------------------------------------------
+# RunPage — per-page outcome record for an ingestion job
+# ---------------------------------------------------------------------------
+
+class RunPage(Base):
+    __tablename__ = "run_pages"
+    __table_args__ = (
+        Index("ix_run_pages_job_id", "job_id"),
     )
 
-    # Relationships
-    job: Mapped["IngestionJob | None"] = relationship(lazy="selectin")
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=func.gen_random_uuid(),
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingestion_jobs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    outcome: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bytes: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    file_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kb_files.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(),
+    )

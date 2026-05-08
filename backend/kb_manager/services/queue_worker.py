@@ -92,9 +92,14 @@ class QueueWorker:
                 # Wait for a semaphore slot before even trying to claim
                 await self._semaphore.acquire()
 
+                # Compute worker_id from semaphore state (after acquire).
+                # _value = remaining slots, so used slots = max - remaining.
+                # Subtract 1 for 0-based indexing.
+                worker_id = self._max_workers - self._semaphore._value - 1
+
                 try:
                     async with self._session_factory() as db:
-                        item = await queue_queries.claim_next(db)
+                        item = await queue_queries.claim_next(db, worker_id=worker_id)
                         await db.commit()
                 except Exception:
                     self._semaphore.release()
@@ -114,7 +119,6 @@ class QueueWorker:
                     continue
 
                 # Spawn a task for this item (semaphore slot already held)
-                worker_id = self._max_workers - self._semaphore._value - 1
                 task = asyncio.create_task(
                     self._process_item_wrapper(item, worker_id),
                     name=f"queue-item-{str(item.id)[:8]}",
@@ -180,7 +184,7 @@ class QueueWorker:
                         await self._stream.publish_event(
                             "queue", "item_reclaimed",
                             queue_item_id=str(info["id"]),
-                            url=info["url"],
+                            source_id=str(info["source_id"]),
                             worker_id=None,
                         )
                     self._notify_event.set()
@@ -196,8 +200,13 @@ class QueueWorker:
     async def _process_item(self, item, worker_id: int) -> None:
         t0 = time.perf_counter()
         item_id = item.id
-        url = item.url
+        source_id = item.source_id
         bind_log_context(worker_id=worker_id, queue_item_id=str(item_id)[:8])
+
+        # Resolve url for logging + the pipeline call (pipeline still takes URL)
+        async with self._session_factory() as db:
+            source = await source_queries.get_source(db, source_id)
+        url = source.url if source is not None else "<unknown>"
         logger.info("🏭 [w%d][queue=%s] Processing: %s", worker_id, str(item_id)[:8], url)
 
         await self._stream.publish_event(
@@ -208,23 +217,15 @@ class QueueWorker:
         )
 
         try:
-            # When the API layer pre-created a Source + IngestionJob (so the
-            # caller can subscribe to scout-stream immediately), the queue
-            # item carries its job_id. Otherwise this is a "raw" enqueue
-            # (e.g. POST /queue) and the worker creates them itself.
+            # When the API layer pre-created the IngestionJob (so the caller
+            # can subscribe to scout-stream immediately), the queue item
+            # carries its job_id. Otherwise create one now.
             if item.job_id is not None:
                 job_id = item.job_id
             else:
                 async with self._session_factory() as db:
-                    source = await source_queries.create_source(
-                        db,
-                        type="aem",
-                        url=url,
-                        region=item.region,
-                        brand=item.brand,
-                        kb_target=item.kb_target,
-                    )
-                    job = await job_queries.create_job(db, source_id=source.id, status="scouting")
+                    job = await job_queries.create_job(db, source_id=source_id, status="scouting")
+                    await source_queries.set_active_job(db, source_id, job.id)
                     await db.commit()
                     job_id = job.id
 
@@ -279,7 +280,7 @@ class QueueWorker:
                         self._notify_event.set()
                     return
 
-                await queue_queries.mark_completed(db, item_id, job_id=job_id)
+                await queue_queries.mark_completed(db, item_id)
                 await db.commit()
 
             elapsed = (time.perf_counter() - t0) * 1000

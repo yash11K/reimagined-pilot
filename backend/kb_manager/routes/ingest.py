@@ -19,6 +19,7 @@ from kb_manager.schemas.ingest import (
     IngestResponse,
     JobCreated,
 )
+from kb_manager.services.pipeline import _extract_language
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -101,6 +102,9 @@ async def start_ingest(
         if not normalized_url.endswith(".model.json"):
             normalized_url = normalized_url.rstrip("/") + ".model.json"
 
+        # Extract language from URL path segments
+        language = _extract_language(normalized_url)
+
         source = await source_queries.create_source(
             db,
             type="aem",
@@ -108,6 +112,8 @@ async def start_ingest(
             region=url_input.region,
             brand=url_input.brand,
             kb_target=ingest_request.kb_target,
+            language=language,
+            origin="manual",
             metadata_={
                 "nav_label": url_input.nav_label,
                 "nav_section": url_input.nav_section,
@@ -121,13 +127,12 @@ async def start_ingest(
             status="scouting",
             steering_prompt=ingest_request.steering_prompt,
         )
+        await source_queries.set_active_job(db, source.id, job.id)
+        await source_queries.set_display_status(db, source.id, "queued")
 
         await queue_queries.add_to_queue(
             db,
-            url=normalized_url,
-            region=url_input.region,
-            brand=url_input.brand,
-            kb_target=ingest_request.kb_target,
+            source_id=source.id,
             job_id=job.id,
         )
 

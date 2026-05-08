@@ -1,9 +1,13 @@
-"""Queue API routes — add URLs, list queue, live event stream."""
+"""Queue API routes — list queue, counts, live event stream.
+
+The queue is keyed by source_id. URLs are no longer accepted directly;
+callers should POST /sources or /ingest first to create a Source, then
+hit /sources/{id}/reingest to enqueue.
+"""
 
 import asyncio
 import json
 import logging
-import uuid
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends, Request
@@ -18,24 +22,9 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
-
-class QueueAddRequest(BaseModel):
-    urls: list[str]
-    region: str | None = None
-    brand: str | None = None
-    kb_target: str = "public"
-    priority: int = 0
-
-
 class QueueItemResponse(BaseModel):
     id: str
-    url: str
-    region: str | None
-    brand: str | None
-    kb_target: str
+    source_id: str
     status: str
     job_id: str | None
     error_message: str | None
@@ -44,45 +33,7 @@ class QueueItemResponse(BaseModel):
     priority: int
     created_at: str | None
     started_at: str | None
-    completed_at: str | None
 
-
-# ---------------------------------------------------------------------------
-# POST /queue — Add URLs to the worker queue
-# ---------------------------------------------------------------------------
-
-@router.post("/queue", status_code=202)
-async def add_to_queue(
-    request: Request,
-    body: QueueAddRequest,
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    logger.info("📥 POST /queue — %d URLs, kb_target=%s", len(body.urls), body.kb_target)
-    items = []
-    skipped = 0
-    for url in body.urls:
-        item = await queue_queries.add_to_queue(
-            db, url=url, region=body.region, brand=body.brand,
-            kb_target=body.kb_target, priority=body.priority,
-        )
-        if item is not None:
-            items.append(str(item.id))
-        else:
-            skipped += 1
-    await db.commit()
-
-    # Notify the worker that new items are available
-    worker = getattr(request.app.state, "queue_worker", None)
-    if worker:
-        worker.notify()
-
-    logger.info("✅ %d URLs queued, %d skipped (duplicate)", len(items), skipped)
-    return {"queued": len(items), "skipped": skipped, "item_ids": items}
-
-
-# ---------------------------------------------------------------------------
-# GET /queue — List queue items
-# ---------------------------------------------------------------------------
 
 @router.get("/queue")
 async def list_queue(
@@ -99,10 +50,7 @@ async def list_queue(
         "items": [
             QueueItemResponse(
                 id=str(i.id),
-                url=i.url,
-                region=i.region,
-                brand=i.brand,
-                kb_target=i.kb_target,
+                source_id=str(i.source_id),
                 status=i.status,
                 job_id=str(i.job_id) if i.job_id else None,
                 error_message=i.error_message,
@@ -111,7 +59,6 @@ async def list_queue(
                 priority=i.priority,
                 created_at=i.created_at.isoformat() if i.created_at else None,
                 started_at=i.started_at.isoformat() if i.started_at else None,
-                completed_at=i.completed_at.isoformat() if i.completed_at else None,
             )
             for i in items
         ],
@@ -120,10 +67,6 @@ async def list_queue(
         "active_workers": worker.active_count if worker else 0,
     }
 
-
-# ---------------------------------------------------------------------------
-# GET /queue/counts — Lightweight counts + worker info (no item list)
-# ---------------------------------------------------------------------------
 
 @router.get("/queue/counts")
 async def queue_counts(
@@ -139,17 +82,9 @@ async def queue_counts(
     }
 
 
-# ---------------------------------------------------------------------------
-# GET /events/stream — Live typed event stream via SSE
-# ---------------------------------------------------------------------------
-
 @router.get("/events/stream")
 async def event_stream(request: Request) -> StreamingResponse:
-    """SSE stream of typed pipeline events.
-
-    Events have the shape: {"timestamp": ..., "topic": "...", "event": "...", "data": {...}}
-    Topics: worker, queue, progress, tokens
-    """
+    """SSE stream of typed pipeline events."""
     logger.info("📡 Event stream opened")
 
     async def generate() -> AsyncGenerator[str, None]:
@@ -185,8 +120,6 @@ async def event_stream(request: Request) -> StreamingResponse:
     )
 
 
-# Keep /logs/stream as alias for backward compatibility
 @router.get("/logs/stream")
 async def log_stream(request: Request) -> StreamingResponse:
-    """Legacy SSE stream — redirects to /events/stream."""
     return await event_stream(request)

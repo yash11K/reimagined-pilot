@@ -1,10 +1,11 @@
-"""CRUD operations for the queue_items table."""
+"""CRUD for queue_items — keyed by source_id; rows DELETED on terminal state."""
 
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, update, func, and_
+import sqlalchemy as sa
+from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,49 +16,37 @@ logger = logging.getLogger(__name__)
 
 async def add_to_queue(
     db: AsyncSession,
-    url: str,
-    region: str | None = None,
-    brand: str | None = None,
-    kb_target: str = "public",
+    source_id: uuid.UUID,
+    *,
     priority: int = 0,
     max_retries: int = 3,
     job_id: uuid.UUID | None = None,
 ) -> QueueItem | None:
-    """Insert a queue item, skipping if an active item for this URL already exists.
+    """Insert a queue row for `source_id`; skip if one is already active.
 
-    When ``job_id`` is supplied, the worker will run the pipeline against the
-    pre-existing job + its source instead of creating new records itself.
-    This lets the API layer return a usable ``job_id`` for SSE subscriptions
-    immediately while the actual work still flows through the queue.
-
-    Returns the item if inserted, None if duplicate was skipped.
+    Returns the new item, or None if a duplicate active row already exists
+    (uq_queue_active_source partial unique index handles concurrency).
     """
     values: dict = {
-        "url": url,
-        "region": region,
-        "brand": brand,
-        "kb_target": kb_target,
+        "source_id": source_id,
         "priority": priority,
         "max_retries": max_retries,
     }
     if job_id is not None:
         values["job_id"] = job_id
-    stmt = (
-        pg_insert(QueueItem)
-        .values(**values)
-        .on_conflict_do_nothing(index_elements=["url"], index_where=QueueItem.status.in_(["queued", "processing"]))
-        .returning(QueueItem.__table__.c.id)
-    )
-    result = await db.execute(stmt)
-    row = result.first()
-    if row is None:
-        logger.info("♻️ Queue skip (duplicate active): %s", url[:80])
+
+    # Try a plain INSERT, catch unique-violation by pre-checking; the partial
+    # unique index can't be referenced by ON CONFLICT, so fall through manually.
+    existing = await get_active_queue_item_for_source(db, source_id)
+    if existing is not None:
+        logger.info("♻️ Queue skip (already active): source=%s", str(source_id)[:8])
         return None
 
-    # Fetch the full ORM object
-    item = await db.get(QueueItem, row[0])
+    item = QueueItem(**values)
+    db.add(item)
     await db.flush()
-    logger.info("📥 Queue item added: id=%s, url=%s", str(item.id)[:8], url[:80])
+    logger.info("📥 Queue item added: id=%s, source=%s",
+                str(item.id)[:8], str(source_id)[:8])
     return item
 
 
@@ -73,17 +62,13 @@ async def get_queue_items(
     return list(result.scalars().all())
 
 
-async def claim_next(db: AsyncSession) -> QueueItem | None:
-    """Atomically claim the oldest queued item for processing.
-
-    Respects next_attempt_at for retry backoff and priority ordering.
-    """
+async def claim_next(db: AsyncSession, worker_id: int | None = None) -> QueueItem | None:
+    """Atomically claim the oldest queued item, respecting backoff + priority."""
     now = datetime.now(timezone.utc)
     stmt = (
         select(QueueItem)
         .where(
             QueueItem.status == "queued",
-            # Only claim items whose retry delay has elapsed
             (QueueItem.next_attempt_at <= now) | (QueueItem.next_attempt_at.is_(None)),
         )
         .order_by(QueueItem.priority.desc(), QueueItem.created_at.asc())
@@ -96,13 +81,13 @@ async def claim_next(db: AsyncSession) -> QueueItem | None:
         item.status = "processing"
         item.started_at = now
         item.last_heartbeat = now
+        item.worker_id = worker_id
         await db.flush()
-        logger.info("🔒 Queue item claimed: id=%s, url=%s", str(item.id)[:8], item.url[:80])
+        logger.info("🔒 Queue item claimed: id=%s", str(item.id)[:8])
     return item
 
 
 async def update_heartbeat(db: AsyncSession, item_id: uuid.UUID) -> None:
-    """Update the heartbeat timestamp for a processing item."""
     await db.execute(
         update(QueueItem)
         .where(QueueItem.id == item_id)
@@ -110,20 +95,9 @@ async def update_heartbeat(db: AsyncSession, item_id: uuid.UUID) -> None:
     )
 
 
-async def mark_completed(
-    db: AsyncSession,
-    item_id: uuid.UUID,
-    job_id: uuid.UUID | None = None,
-) -> None:
-    await db.execute(
-        update(QueueItem)
-        .where(QueueItem.id == item_id)
-        .values(
-            status="completed",
-            job_id=job_id,
-            completed_at=datetime.now(timezone.utc),
-        )
-    )
+async def mark_completed(db: AsyncSession, item_id: uuid.UUID) -> None:
+    """Delete the queue row — completion lives on the job, not the queue."""
+    await db.execute(delete(QueueItem).where(QueueItem.id == item_id))
 
 
 async def mark_failed(
@@ -132,10 +106,7 @@ async def mark_failed(
     error: str,
     retry_base_delay: int = 5,
 ) -> dict:
-    """Mark item as failed. If retries remain, requeue with backoff.
-
-    Returns dict with ``outcome`` ("requeued" or "failed") and retry timing.
-    """
+    """If retries remain, requeue with backoff. Else delete the row."""
     item = await db.get(QueueItem, item_id)
     if item is None:
         return {"outcome": "failed"}
@@ -162,18 +133,13 @@ async def mark_failed(
             "next_retry_at": next_attempt.isoformat(),
         }
 
-    item.status = "failed"
-    item.error_message = error
-    item.completed_at = datetime.now(timezone.utc)
-    await db.flush()
-    return {"outcome": "failed", "retry_count": item.retry_count, "max_retries": item.max_retries}
+    retry_count, max_retries = item.retry_count, item.max_retries
+    await db.execute(delete(QueueItem).where(QueueItem.id == item_id))
+    return {"outcome": "failed", "retry_count": retry_count, "max_retries": max_retries}
 
 
 async def reclaim_stale(db: AsyncSession, stale_timeout: int = 300) -> list[dict]:
-    """Find processing items with stale heartbeats and requeue them.
-
-    Returns list of dicts with ``id`` and ``url`` for reclaimed items.
-    """
+    """Find processing items with stale heartbeats and requeue them."""
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=stale_timeout)
     stmt = (
         select(QueueItem)
@@ -187,6 +153,7 @@ async def reclaim_stale(db: AsyncSession, stale_timeout: int = 300) -> list[dict
     stale_items = list(result.scalars().all())
 
     reclaimed: list[dict] = []
+    to_delete: list[uuid.UUID] = []
     for item in stale_items:
         if item.retry_count < item.max_retries:
             item.retry_count += 1
@@ -195,29 +162,81 @@ async def reclaim_stale(db: AsyncSession, stale_timeout: int = 300) -> list[dict
             item.started_at = None
             item.last_heartbeat = None
             item.next_attempt_at = datetime.now(timezone.utc)
-            reclaimed.append({"id": item.id, "url": item.url})
-            logger.warning(
-                "♻️ Reclaimed stale item: id=%s, retry %d/%d",
-                str(item.id)[:8], item.retry_count, item.max_retries,
-            )
+            reclaimed.append({"id": item.id, "source_id": item.source_id})
+            logger.warning("♻️ Reclaimed stale item: id=%s", str(item.id)[:8])
         else:
-            item.status = "failed"
-            item.error_message = f"Failed: stale heartbeat after {item.max_retries} retries"
-            item.completed_at = datetime.now(timezone.utc)
+            to_delete.append(item.id)
             logger.warning("💀 Stale item exhausted retries: id=%s", str(item.id)[:8])
 
-    if reclaimed:
+    if to_delete:
+        await db.execute(delete(QueueItem).where(QueueItem.id.in_(to_delete)))
+    if reclaimed or to_delete:
         await db.flush()
     return reclaimed
 
 
+async def get_queue_position(db: AsyncSession, source_id: uuid.UUID) -> int | None:
+    """Position in queue for a source — count of items strictly ahead."""
+    item = await get_active_queue_item_for_source(db, source_id)
+    if item is None or item.status != "queued":
+        return None
+
+    count_stmt = (
+        select(func.count())
+        .select_from(QueueItem)
+        .where(
+            QueueItem.status == "queued",
+            QueueItem.id != item.id,
+            sa.or_(
+                QueueItem.priority > item.priority,
+                and_(
+                    QueueItem.priority == item.priority,
+                    QueueItem.created_at < item.created_at,
+                ),
+            ),
+        )
+    )
+    return (await db.execute(count_stmt)).scalar_one()
+
+
+async def get_active_queue_item_for_source(
+    db: AsyncSession, source_id: uuid.UUID,
+) -> QueueItem | None:
+    stmt = (
+        select(QueueItem)
+        .where(
+            QueueItem.source_id == source_id,
+            QueueItem.status.in_(["queued", "processing"]),
+        )
+        .limit(1)
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def get_active_queue_items_batch(
+    db: AsyncSession, source_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, QueueItem]:
+    if not source_ids:
+        return {}
+    stmt = (
+        select(QueueItem)
+        .where(
+            QueueItem.source_id.in_(source_ids),
+            QueueItem.status.in_(["queued", "processing"]),
+        )
+        .order_by(QueueItem.status.desc())  # 'processing' > 'queued' lexically
+    )
+    by_source: dict[uuid.UUID, QueueItem] = {}
+    for item in (await db.execute(stmt)).scalars().all():
+        if item.source_id not in by_source:
+            by_source[item.source_id] = item
+    return by_source
+
+
 async def get_queue_counts(db: AsyncSession) -> dict[str, int]:
     stmt = select(QueueItem.status, func.count()).group_by(QueueItem.status)
-    result = await db.execute(stmt)
-    counts = {row[0]: row[1] for row in result.all()}
+    counts = {row[0]: row[1] for row in (await db.execute(stmt)).all()}
     return {
         "queued": counts.get("queued", 0),
         "processing": counts.get("processing", 0),
-        "completed": counts.get("completed", 0),
-        "failed": counts.get("failed", 0),
     }

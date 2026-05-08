@@ -7,9 +7,8 @@ import logging
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
-from strands import Agent
 
-from kb_manager.agents._models import get_bedrock_model
+from kb_manager.agents._bedrock_structured import converse_structured
 from kb_manager.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -19,47 +18,29 @@ logger = logging.getLogger(__name__)
 # Pydantic models for structured output
 # ---------------------------------------------------------------------------
 
-class ComponentLink(BaseModel):
-    url: str = ""
-    anchor_text: str | None = None
-
-
 class ComponentOutput(BaseModel):
-    id: str = ""
-    component_type: str = ""
+    # Echoed components — id + type + title + snippet only. Per-component
+    # ``links`` dropped: we already get every link via the pre-extracted
+    # links list; echoing them again wastes Haiku output tokens.
+    id: str
+    component_type: str
     title: str | None = None
     text_snippet: str | None = None
-    links: list[ComponentLink] = Field(default_factory=list)
 
 
 class ClassifiedLinkOutput(BaseModel):
     """A link with its classification decided by the Discovery Agent."""
-    url: str = ""
+    url: str
+    classification: Literal["certain", "uncertain", "navigation"]
+    reason: str
     anchor_text: str | None = None
     context: str | None = None
-    classification: Literal["certain", "uncertain", "navigation"] = "uncertain"
-    reason: str = ""
 
 
 class DiscoveryOutput(BaseModel):
     """Structured output from the Discovery Agent."""
-    components: list[ComponentOutput] = Field(default_factory=list)
-    classified_links: list[ClassifiedLinkOutput] = Field(default_factory=list)
-
-    @field_validator("components", mode="before")
-    @classmethod
-    def _coerce_components_to_list(cls, v):
-        """LLMs sometimes return a single dict instead of a list — wrap it."""
-        if isinstance(v, dict):
-            return [v]
-        return v
-
-    @field_validator("classified_links", mode="before")
-    @classmethod
-    def _coerce_links_to_list(cls, v):
-        if isinstance(v, dict):
-            return [v]
-        return v
+    components: list[ComponentOutput]
+    classified_links: list[ClassifiedLinkOutput]
 
 
 # ---------------------------------------------------------------------------
@@ -154,8 +135,9 @@ SYSTEM_PROMPT = (
 class DiscoveryAgent:
     """Discovers content components and classifies links from pruned AEM JSON.
 
-    Builds a fresh Strands ``Agent`` per ``run()`` invocation so conversation
-    history from prior pages cannot bleed into the next page's classification.
+    Uses Bedrock's native structured outputs (Feb 2026) via direct Converse
+    call — token-level constrained decoding guarantees schema compliance
+    without the retry-loop pathology of Strands' tool-based path.
     """
 
     def __init__(self) -> None:
@@ -163,13 +145,6 @@ class DiscoveryAgent:
         self._model_id = settings.HAIKU_MODEL_ID
         self._max_tokens = settings.HAIKU_MAX_TOKENS
         logger.info("🔎 Initialising Discovery Agent (model=%s)", self._model_id)
-
-    def _build_agent(self) -> Agent:
-        """Create a fresh, stateless agent for a single invocation."""
-        return Agent(
-            model=get_bedrock_model(self._model_id, self._max_tokens),
-            system_prompt=SYSTEM_PROMPT,
-        )
 
     async def run(
         self,
@@ -213,12 +188,13 @@ class DiscoveryAgent:
             f"{links_section}"
         )
 
-        agent = self._build_agent()
-        result = await agent.invoke_async(
-            prompt, structured_output_model=DiscoveryOutput,
+        output = await converse_structured(
+            model_id=self._model_id,
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=prompt,
+            output_model=DiscoveryOutput,
+            max_tokens=self._max_tokens,
         )
-
-        output: DiscoveryOutput | None = getattr(result, "structured_output", None)
         if output is None:
             logger.warning("⚠️ Discovery Agent returned no structured output, returning empty result")
             return DiscoveryResult()
@@ -229,7 +205,7 @@ class DiscoveryAgent:
                 component_type=c.component_type,
                 title=c.title,
                 text_snippet=c.text_snippet,
-                links=[lk.url for lk in c.links if lk.url],
+                links=[],  # per-component links no longer echoed; pre-extracted list is the source of truth
             )
             for c in output.components
         ]

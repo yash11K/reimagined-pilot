@@ -10,7 +10,7 @@ class AemUrlInput(BaseModel):
     """Single AEM URL entry for ingestion."""
 
     url: str
-    region: str
+    region: str | None = None
     brand: str | None = None
     nav_label: str | None = None
     nav_section: str | None = None

@@ -63,6 +63,7 @@ async def list_files(
     region: str | None = None,
     brand: str | None = None,
     kb_target: str | None = None,
+    language: str | None = None,
     job_id: uuid.UUID | None = None,
     source_id: uuid.UUID | None = None,
     search: str | None = None,
@@ -86,6 +87,9 @@ async def list_files(
     if kb_target is not None:
         query = query.where(KBFile.kb_target == kb_target)
         count_query = count_query.where(KBFile.kb_target == kb_target)
+    if language is not None:
+        query = query.where(KBFile.language == language)
+        count_query = count_query.where(KBFile.language == language)
     if job_id is not None:
         query = query.where(KBFile.job_id == job_id)
         count_query = count_query.where(KBFile.job_id == job_id)
@@ -147,10 +151,7 @@ async def delete_file(db: AsyncSession, file_id: uuid.UUID) -> bool:
 async def count_files_by_status(
     db: AsyncSession, source_id: uuid.UUID,
 ) -> dict[str, int]:
-    """Count files grouped by status for a given source (via junction table).
-
-    Single ``GROUP BY status`` round-trip rather than four separate counts.
-    """
+    """Count files grouped by status for a given source (via junction)."""
     stmt = (
         select(KBFile.status, func.count())
         .select_from(KBFile)
@@ -166,4 +167,40 @@ async def count_files_by_status(
         "approved": by_status.get("approved", 0),
         "pending_review": by_status.get("pending_review", 0),
         "rejected": by_status.get("rejected", 0),
+    }
+
+
+async def list_active_files_for_source(
+    db: AsyncSession, source_id: uuid.UUID,
+) -> list[KBFile]:
+    """List non-superseded, non-rejected files linked to this source."""
+    stmt = (
+        select(KBFile)
+        .join(source_kb_files, source_kb_files.c.kb_file_id == KBFile.id)
+        .where(
+            source_kb_files.c.source_id == source_id,
+            KBFile.status.notin_(("superseded", "rejected")),
+        )
+        .order_by(KBFile.created_at.desc())
+    )
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def list_files_pending_review(
+    db: AsyncSession, *, page: int = 1, size: int = 20,
+) -> dict:
+    """List files awaiting human review."""
+    import math as _m
+    base = select(KBFile).where(KBFile.status == "pending_review")
+    count_q = select(func.count()).select_from(KBFile).where(
+        KBFile.status == "pending_review",
+    )
+    total = (await db.execute(count_q)).scalar_one()
+    offset = (page - 1) * size
+    rows = (await db.execute(
+        base.order_by(KBFile.created_at.desc()).offset(offset).limit(size),
+    )).scalars().all()
+    return {
+        "items": list(rows), "total": total, "page": page, "size": size,
+        "pages": _m.ceil(total / size) if size > 0 else 0,
     }

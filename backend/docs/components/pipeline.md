@@ -119,9 +119,9 @@ Run the full QA pipeline on a single extracted file and persist the result.
 
 Searches for `jcr:lastModified`, `cq:lastModified`, or `lastModified` in the AEM JSON root and `jcr:content` node. Falls back to `datetime.now(UTC)`.
 
-## Helper: `_is_english_url(url)`
+## Helper: `_extract_language(url)`
 
-Returns `True` only if the URL contains `/en/` path segment. Non-English URLs are filtered out during scout.
+Extracts the language code from URL path segments by checking against `SUPPORTED_LANGUAGES` (configured in settings, default: `{"en", "fr"}`). Returns the language code (e.g. `"en"`, `"fr"`) if found, `None` otherwise. URLs with no supported language segment are filtered out during scout.
 
 ---
 

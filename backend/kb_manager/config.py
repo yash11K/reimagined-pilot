@@ -12,18 +12,19 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     S3_BUCKET_NAME: str
     AWS_REGION: str = "us-east-1"
-    BEDROCK_MODEL_ID: str = "us.anthropic.claude-sonnet-4-20250514-v1:0"
-    HAIKU_MODEL_ID: str = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    BEDROCK_MODEL_ID: str = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    HAIKU_MODEL_ID: str = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
     BEDROCK_KB_ID: str | None = None
     BEDROCK_DS_ID: str | None = None  # Data source ID for KB sync
     BEDROCK_MAX_TOKENS: int = 16000
-    HAIKU_MAX_TOKENS: int = 8192
+    HAIKU_MAX_TOKENS: int = 16384
     AEM_REQUEST_TIMEOUT: int = 30
     MAX_CONCURRENT_JOBS: int = 3
     QUEUE_POLL_INTERVAL: int = 3  # seconds between queue checks when idle
     QUEUE_MAX_RETRIES: int = 3
     QUEUE_RETRY_BASE_DELAY: int = 5  # seconds; actual delay = base * 2^retry_count
     QUEUE_STALE_TIMEOUT: int = 300  # seconds before a processing item is considered stale
+    SUPPORTED_LANGUAGES: set[str] = {"en", "fr"}
 
     model_config = SettingsConfigDict(env_file=".env")
 

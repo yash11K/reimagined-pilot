@@ -16,33 +16,37 @@ class TestBuildS3Key:
     """Tests for S3 key construction (Requirement 17.1)."""
 
     def test_basic_key(self):
-        key = S3Uploader.build_s3_key("public", "avis", "nam", "protections", "loss-damage-waiver.md")
-        assert key == "public/avis/nam/protections/loss-damage-waiver.md"
+        key = S3Uploader.build_s3_key("public", "avis", "nam", "en", "protections", "loss-damage-waiver.md")
+        assert key == "public/avis/nam/en/protections/loss-damage-waiver.md"
 
     def test_no_leading_slash(self):
-        key = S3Uploader.build_s3_key("/public", "avis", "nam", "ns", "file.md")
+        key = S3Uploader.build_s3_key("/public", "avis", "nam", "en", "ns", "file.md")
         assert not key.startswith("/")
 
     def test_no_trailing_slash(self):
-        key = S3Uploader.build_s3_key("public", "avis", "nam", "ns", "file.md/")
+        key = S3Uploader.build_s3_key("public", "avis", "nam", "en", "ns", "file.md/")
         assert not key.endswith("/")
 
     def test_no_double_slashes(self):
-        key = S3Uploader.build_s3_key("public/", "/avis", "/nam/", "ns", "file.md")
+        key = S3Uploader.build_s3_key("public/", "/avis", "/nam/", "en", "ns", "file.md")
         assert "//" not in key
 
     def test_strips_slashes_from_all_parts(self):
-        key = S3Uploader.build_s3_key("/public/", "/brand/", "/region/", "/ns/", "/file.md/")
-        assert key == "public/brand/region/ns/file.md"
+        key = S3Uploader.build_s3_key("/public/", "/brand/", "/region/", "/en/", "/ns/", "/file.md/")
+        assert key == "public/brand/region/en/ns/file.md"
 
     def test_empty_parts_skipped(self):
-        key = S3Uploader.build_s3_key("public", "", "nam", "", "file.md")
-        assert key == "public/nam/file.md"
+        key = S3Uploader.build_s3_key("public", "", "nam", "en", "", "file.md")
+        assert key == "public/nam/en/file.md"
         assert "//" not in key
 
     def test_internal_kb_target(self):
-        key = S3Uploader.build_s3_key("internal", "budget", "emea", "faq", "pricing.md")
-        assert key == "internal/budget/emea/faq/pricing.md"
+        key = S3Uploader.build_s3_key("internal", "budget", "emea", "fr", "faq", "pricing.md")
+        assert key == "internal/budget/emea/fr/faq/pricing.md"
+
+    def test_french_language_segment(self):
+        key = S3Uploader.build_s3_key("public", "avis", "nam", "fr", "protections", "assurance.md")
+        assert key == "public/avis/nam/fr/protections/assurance.md"
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +65,7 @@ class TestUpload:
             "kb_target": "public",
             "brand": "avis",
             "region": "nam",
+            "language": "en",
             "source_url": "https://example.com/protections/ldw",
             "status": "approved",
             "quality_verdict": "accepted",
@@ -95,7 +100,7 @@ class TestUpload:
         result = await uploader.upload(file)
 
         assert result is not None
-        assert result.startswith("public/avis/nam/")
+        assert result.startswith("public/avis/nam/en/")
         assert result.endswith(".md")
         # Should upload both the .md file and the .metadata.json sidecar
         assert mock_client.put_object.call_count == 2
@@ -128,7 +133,7 @@ class TestUpload:
         mock_boto3.client.return_value = mock_client
 
         uploader = S3Uploader()
-        file = self._make_file(brand=None, region=None)
+        file = self._make_file(brand=None, region=None, language=None)
         result = await uploader.upload(file)
 
         assert result is not None

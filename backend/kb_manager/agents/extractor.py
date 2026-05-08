@@ -6,9 +6,8 @@ import json
 import logging
 
 from pydantic import BaseModel, Field, field_validator
-from strands import Agent
 
-from kb_manager.agents._models import get_bedrock_model
+from kb_manager.agents._bedrock_structured import converse_structured
 from kb_manager.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -19,28 +18,22 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class ExtractedFileOutput(BaseModel):
-    title: str = ""
-    md_content: str = ""
-    source_url: str | None = None
+    # Required fields — strict-mode model MUST populate. Defaults removed so
+    # the JSON schema marks them ``required``.
+    title: str
+    md_content: str
+    source_url: str
+    region: str
+    brand: str
+    category: str
+    visibility: str
+    tags: list[str]
     content_type: str | None = None
-    region: str | None = None
-    brand: str | None = None
-    category: str | None = None
-    visibility: str | None = None
-    tags: list[str] = Field(default_factory=list)
 
 
 class ExtractionOutput(BaseModel):
     """Structured output from the Extractor Agent."""
-    files: list[ExtractedFileOutput] = Field(default_factory=list)
-
-    @field_validator("files", mode="before")
-    @classmethod
-    def _coerce_files_to_list(cls, v):
-        """LLMs sometimes return a single dict instead of a list — wrap it."""
-        if isinstance(v, dict):
-            return [v]
-        return v
+    files: list[ExtractedFileOutput]
 
 
 # ---------------------------------------------------------------------------
@@ -69,15 +62,18 @@ SYSTEM_PROMPT = (
     "CRITICAL RULES:\n"
     "1. PRESERVE ALL TEXT VERBATIM — do not rephrase, summarise, shorten, or omit any text. "
     "Every word from the source must appear in the output.\n"
-    "2. PRESERVE ALL HYPERLINKS as [text](url) markdown.\n"
-    "3. PRESERVE ALL HTML CONTENT — convert HTML tables to markdown tables, HTML lists to "
+    "2. PRESERVE THE ORIGINAL LANGUAGE — do NOT translate content. If the source is in French, "
+    "output French. If it mixes languages, preserve the mix exactly as-is. The URL locale "
+    "(e.g. /fr/, /de/, /es/) indicates the expected language.\n"
+    "3. PRESERVE ALL HYPERLINKS as [text](url) markdown.\n"
+    "4. PRESERVE ALL HTML CONTENT — convert HTML tables to markdown tables, HTML lists to "
     "markdown lists, HTML bold/italic to markdown equivalents. Do not drop HTML content.\n"
-    "4. ACCORDION CONTENT — AEM accordion modules (accordionmodule/accordionitem) contain "
+    "5. ACCORDION CONTENT — AEM accordion modules (accordionmodule/accordionitem) contain "
     "critical content in their 'body' field, often as HTML. Extract ALL accordion items "
     "with their titles as subheadings and their full body content converted to markdown.\n"
-    "5. CONTENT MODULES — extract headline + bodyText from every contentmodule component.\n"
-    "6. HERO BANNERS — extract heroHeadline and heroDescription.\n"
-    "7. BREADCRUMBS — extract as a breadcrumb trail.\n\n"
+    "6. CONTENT MODULES — extract headline + bodyText from every contentmodule component.\n"
+    "7. HERO BANNERS — extract heroHeadline and heroDescription.\n"
+    "8. BREADCRUMBS — extract as a breadcrumb trail.\n\n"
     "OUTPUT FORMAT:\n"
     "Output PURE MARKDOWN only. Do NOT include YAML frontmatter (no --- blocks).\n"
     "Start directly with the content heading. Metadata (title, source_url, region, brand, "
@@ -114,8 +110,9 @@ SYSTEM_PROMPT = (
 class ExtractorAgent:
     """Extracts markdown files from content components using Sonnet.
 
-    Builds a fresh Strands ``Agent`` per ``run()`` invocation so conversation
-    history from prior pages cannot bleed into the next page's extraction.
+    Uses Bedrock's native structured outputs (Feb 2026) via direct Converse
+    call — token-level constrained decoding guarantees schema compliance
+    without the retry-loop pathology of Strands' tool-based path.
     """
 
     def __init__(self) -> None:
@@ -123,13 +120,6 @@ class ExtractorAgent:
         self._model_id = settings.BEDROCK_MODEL_ID
         self._max_tokens = settings.BEDROCK_MAX_TOKENS
         logger.info("📝 Initialising Extractor Agent (model=%s)", self._model_id)
-
-    def _build_agent(self) -> Agent:
-        """Create a fresh, stateless agent for a single invocation."""
-        return Agent(
-            model=get_bedrock_model(self._model_id, self._max_tokens),
-            system_prompt=SYSTEM_PROMPT,
-        )
 
     async def run(
         self,
@@ -140,21 +130,20 @@ class ExtractorAgent:
         logger.info("📝 Extractor Agent running — %d components, steering=%s",
                      len(components), bool(steering_prompt))
         parts = [
-            "Extract markdown files from these components. Return the result as "
-            "`{ \"files\": [ { ... } ] }` — `files` MUST be a JSON array even for "
-            "a single file. Do not return a bare object.\n\n"
+            "Extract markdown files from these components.\n\n"
             f"Components:\n```json\n{json.dumps(components, indent=2)}\n```"
         ]
         if steering_prompt:
             parts.append(f"\nSteering prompt: {steering_prompt}")
 
-        prompt = "\n".join(parts)
-        agent = self._build_agent()
-        result = await agent.invoke_async(
-            prompt, structured_output_model=ExtractionOutput,
+        output = await converse_structured(
+            model_id=self._model_id,
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt="\n".join(parts),
+            output_model=ExtractionOutput,
+            max_tokens=self._max_tokens,
         )
 
-        output: ExtractionOutput | None = getattr(result, "structured_output", None)
         if output is None:
             logger.warning("⚠️ Extractor Agent returned no structured output, returning empty list")
             return []

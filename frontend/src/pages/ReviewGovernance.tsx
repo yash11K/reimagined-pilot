@@ -7,7 +7,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { DataTable, Table, Thead, Th, Tbody, Tr, Td, EmptyRow } from "@/components/ui/Table";
 import { Badge, statusTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { listFiles, listSources, confirmSource } from "@/api/endpoints";
+import { listFiles, listPendingReviewSources, confirmSource } from "@/api/endpoints";
 import { useBrand } from "@/contexts/BrandContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -38,15 +38,9 @@ export default function ReviewGovernance() {
   });
 
   const uncertainSources = useQuery({
-    queryKey: ["sources", "uncertain", brandParam()],
-    queryFn: () =>
-      listSources({
-        page: 1,
-        size: 50,
-        status: "needs_confirmation",
-        parent_only: false,
-        brand: brandParam(),
-      }),
+    queryKey: ["sources", "pending-review", brandParam()],
+    queryFn: () => listPendingReviewSources(),
+    refetchInterval: 5_000,
   });
 
   const scoutStream = useJobScoutStream();
@@ -58,10 +52,10 @@ export default function ReviewGovernance() {
       qc.invalidateQueries({ queryKey: ["sources"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       if (vars.action === "process") {
-        toast.success("Ingesting", "Source queued");
+        toast.success("Approved", "Source queued for ingestion");
         if (data.job_id) scoutStream.attach(data.job_id);
       } else {
-        toast.info("Discarded");
+        toast.info("Rejected", "Source discarded");
       }
     },
     onError: (err: unknown) => toast.error("Action failed", errorWithRef(err)),
@@ -72,7 +66,7 @@ export default function ReviewGovernance() {
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "files", label: "Pending Files", count: filesCount },
-    { key: "sources", label: "Uncertain Sources", count: sourcesCount },
+    { key: "sources", label: "Discovered Sources", count: sourcesCount },
     { key: "all", label: "All", count: filesCount + sourcesCount },
   ];
 
@@ -80,12 +74,12 @@ export default function ReviewGovernance() {
     <>
       <PageHeader
         title="Review & Governance"
-        subtitle="Pending files and uncertain sources awaiting human decision."
+        subtitle="Pending files and discovered sources awaiting human approval."
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Pending Files" value={fmtNum(filesCount)} icon={Clock} />
-        <KpiCard label="Uncertain Sources" value={fmtNum(sourcesCount)} icon={AlertTriangle} />
+        <KpiCard label="Discovered Sources" value={fmtNum(sourcesCount)} icon={AlertTriangle} hint="awaiting approval" />
         <KpiCard label="Approved Today" value="—" icon={CheckCircle2} hint="coming soon" />
         <KpiCard label="Avg Review Time" value="2.3d" hint="demo" fake icon={Clock} />
       </div>
@@ -168,7 +162,7 @@ export default function ReviewGovernance() {
         <div className="mt-4">
           <DataTable>
             <div className="border-b border-line px-5 py-3 text-sm font-semibold text-ink">
-              Uncertain Sources
+              Discovered Sources (pending review)
             </div>
             <Table>
               <Thead>
@@ -182,7 +176,7 @@ export default function ReviewGovernance() {
               </Thead>
               <Tbody>
                 {uncertainSources.data?.items.length === 0 && (
-                  <EmptyRow colSpan={5} message="No uncertain sources." />
+                  <EmptyRow colSpan={5} message="No sources awaiting review." />
                 )}
                 {uncertainSources.data?.items.map((s) => (
                   <Tr key={s.id}>
@@ -198,7 +192,7 @@ export default function ReviewGovernance() {
                           disabled={confirmMut.isPending}
                           onClick={() => confirmMut.mutate({ id: s.id, action: "process" })}
                         >
-                          <Zap className="h-3 w-3" /> Ingest
+                          <Zap className="h-3 w-3" /> Approve
                         </Button>
                         <Button
                           size="sm"
@@ -206,7 +200,7 @@ export default function ReviewGovernance() {
                           disabled={confirmMut.isPending}
                           onClick={() => confirmMut.mutate({ id: s.id, action: "discard" })}
                         >
-                          Discard
+                          Reject
                         </Button>
                         <a
                           href={s.url}

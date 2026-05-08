@@ -74,13 +74,14 @@ class S3Uploader:
         kb_target: str,
         brand: str,
         region: str,
+        language: str,
         namespace: str,
         filename: str,
     ) -> str:
         """Construct a sanitized S3 key from path segments.
 
-        Returns ``{kb_target}/{brand}/{region}/{namespace}/{filename}`` with
-        each segment sanitized via :meth:`_sanitize_segment` so LLM-derived
+        Returns ``{kb_target}/{brand}/{region}/{language}/{namespace}/{filename}``
+        with each segment sanitized via :meth:`_sanitize_segment` so LLM-derived
         values cannot produce path traversal or inject extra slashes.
         """
         # Split filename into stem + extension and sanitize the stem only,
@@ -97,6 +98,7 @@ class S3Uploader:
             cls._sanitize_segment(kb_target),
             cls._sanitize_segment(brand),
             cls._sanitize_segment(region),
+            cls._sanitize_segment(language),
             cls._sanitize_segment(namespace),
             sanitized_filename,
         ]
@@ -123,6 +125,7 @@ class S3Uploader:
         _add("source_url", file.source_url)
         _add("region", file.region)
         _add("brand", file.brand)
+        _add("language", file.language)
         _add("kb_target", file.kb_target)
         _add("category", getattr(file, "category", None))
         _add("visibility", getattr(file, "visibility", None))
@@ -198,6 +201,7 @@ class S3Uploader:
                 kb_target=file.kb_target,
                 brand=file.brand or "unknown",
                 region=file.region or "unknown",
+                language=file.language or "en",
                 namespace=namespace,
                 filename=filename,
             )

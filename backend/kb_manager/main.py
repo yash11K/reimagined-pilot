@@ -21,7 +21,6 @@ from kb_manager.routes.files import router as files_router
 from kb_manager.routes.sources import router as sources_router
 from kb_manager.routes.jobs import router as jobs_router
 from kb_manager.routes.kb import router as kb_router
-from kb_manager.routes.nav import router as nav_router
 from kb_manager.routes.stats import router as stats_router
 from kb_manager.routes.queue import router as queue_router
 from kb_manager.routes.activity import router as activity_router
@@ -162,7 +161,6 @@ def create_app() -> FastAPI:
     app.include_router(sources_router, prefix="/api/v1")
     app.include_router(jobs_router, prefix="/api/v1")
     app.include_router(kb_router, prefix="/api/v1")
-    app.include_router(nav_router, prefix="/api/v1")
     app.include_router(stats_router, prefix="/api/v1")
     app.include_router(queue_router, prefix="/api/v1")
     app.include_router(activity_router, prefix="/api/v1")

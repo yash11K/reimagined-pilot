@@ -22,6 +22,7 @@ import { Shimmer } from "@/components/ui/Shimmer";
 import { Modal } from "@/components/ui/Modal";
 import {
   listSources,
+  listPendingReviewSources,
   getStats,
   confirmSource,
   startIngest,
@@ -59,15 +60,8 @@ export default function DiscoveryTools() {
   });
 
   const uncertain = useQuery({
-    queryKey: ["sources", "uncertain", brandParam()],
-    queryFn: () =>
-      listSources({
-        page: 1,
-        size: 20,
-        status: "needs_confirmation",
-        brand: brandParam(),
-        parent_only: false,
-      }),
+    queryKey: ["sources", "pending-review"],
+    queryFn: () => listPendingReviewSources(),
   });
 
   const confirmMut = useMutation({
@@ -92,7 +86,7 @@ export default function DiscoveryTools() {
   const runAllMut = useMutation({
     mutationFn: async () => {
       const eligible = (sources.data?.items ?? []).filter(
-        (s) => s.status === "active" && !s.is_ingested
+        (s) => s.display_status === "idle" || s.display_status === "failed"
       );
       if (eligible.length === 0) return { scheduled: 0 };
 
@@ -140,7 +134,12 @@ export default function DiscoveryTools() {
   });
 
   const items = sources.data?.items ?? [];
-  const running = items.filter((s) => s.is_scouted && !s.is_ingested).length;
+  const running = items.filter(
+    (s) =>
+      s.display_status === "discovering" ||
+      s.display_status === "extracting" ||
+      s.display_status === "qa",
+  ).length;
 
   return (
     <>

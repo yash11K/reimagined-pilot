@@ -30,3 +30,6 @@ backend/logs/
 *.pem
 update.sh
 gleaming-weaving-hamster.md
+
+# Kiro IDE
+backend/.kiro/

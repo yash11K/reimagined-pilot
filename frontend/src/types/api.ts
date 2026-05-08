@@ -53,20 +53,45 @@ export interface Stats {
   discovered_today: number;
 }
 
+export type DisplayStatus =
+  | "idle"
+  | "queued"
+  | "discovering"
+  | "extracting"
+  | "qa"
+  | "failed"
+  | "needs_review";
+
 export interface SourceSummary {
   id: string;
   url: string;
   type: string;
   kb_target: KbTarget;
   status: SourceStatus;
+  display_status: DisplayStatus;
   region: string | null;
   brand: string | null;
-  is_scouted: boolean;
-  is_ingested: boolean;
-  job_count: number;
-  child_count: number;
+  origin: "manual" | "discovered";
+  run_count: number;
+  last_run_at: string | null;
+  active_job_id?: string | null;
+  child_count?: number;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface SourceListCounts {
+  by_status: Partial<Record<DisplayStatus, number>>;
+  by_region: Record<string, number>;
+  by_brand: Record<string, number>;
+  by_origin: Partial<Record<"manual" | "discovered", number>>;
+  // Backend gap (phase 2): by_type and by_kb_target not yet exposed.
+  by_type?: Record<string, number>;
+  by_kb_target?: Partial<Record<KbTarget, number>>;
+}
+
+export interface SourceListResponse extends Paginated<SourceSummary> {
+  counts: SourceListCounts | null;
 }
 
 export interface FileStats {
@@ -76,10 +101,61 @@ export interface FileStats {
   rejected: number;
 }
 
+export interface SourceRuntime {
+  queue_position: number | null;
+  worker_id: number | null;
+}
+
+export interface ActiveFile {
+  id: string;
+  title: string;
+  status: FileStatus;
+}
+
+export interface RunHistoryEntry {
+  id: string;
+  status: JobStatus;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
 export interface SourceDetail extends SourceSummary {
   scout_summary: Record<string, unknown> | null;
   file_stats: FileStats;
   children?: SourceSummary[];
+  steering_prompt: string | null;
+  parent_url: string | null;
+  active_files: ActiveFile[];
+  run_history: RunHistoryEntry[];
+  metadata?: Record<string, unknown> | null;
+  runtime: SourceRuntime | null;
+  last_ingested_at?: string | null;
+}
+
+// POST /sources/{id}/reingest
+export interface ReingestRequest {
+  steering_prompt?: string | null;
+  priority?: number;
+}
+
+export interface ReingestResponse {
+  job_id: string;
+  source_id: string;
+  status: JobStatus;
+}
+
+// GET /jobs/{job_id}/pages
+export type PageOutcome = "created" | "replaced" | "skipped";
+
+export interface JobPage {
+  id: string;
+  job_id: string;
+  url: string;
+  outcome: PageOutcome;
+  reason: string | null;
+  bytes: number | null;
+  file_id: string | null;
+  created_at: string;
 }
 
 export interface FileSummary {
@@ -147,7 +223,7 @@ export interface ActivityResponse {
 // Ingest
 export interface AemUrlInput {
   url: string;
-  region?: string | null;
+  region: string;
   brand?: string | null;
   nav_label?: string | null;
   nav_section?: string | null;
@@ -180,16 +256,6 @@ export interface ConfirmSourceResponse {
   status: SourceStatus | JobStatus;
 }
 
-// Nav tree (matches kb_manager/services/nav_parser.py:_link_to_node)
-export interface NavTreeNode {
-  label: string;
-  path: string;
-  url: string;
-  section: string;
-  model_json_url: string;
-  children: NavTreeNode[];
-}
-
 // Queue System v2 types — mirrors backend v2 API shapes
 
 /** Structured event envelope from /api/v1/events/stream */
@@ -202,7 +268,7 @@ export interface SSEEnvelope {
 
 export interface QueueItem {
   id: string;
-  url: string;
+  source_id: string;
   status: string;
   retry_count: number;
   max_retries: number;
@@ -210,17 +276,6 @@ export interface QueueItem {
   error_message: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export interface QueueSubmitRequest {
-  urls: string[];
-  priority: number;
-}
-
-export interface QueueSubmitResponse {
-  queued: number;
-  skipped: number;
-  item_ids: string[];
 }
 
 export type WorkerEventName = "worker_started" | "worker_idle";

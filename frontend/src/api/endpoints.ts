@@ -1,8 +1,9 @@
 import { apiClient } from "./client";
 import type {
   Stats,
-  SourceSummary,
   SourceDetail,
+  SourceSummary,
+  SourceListResponse,
   FileSummary,
   FileDetail,
   Paginated,
@@ -10,12 +11,12 @@ import type {
   IngestRequest,
   IngestResponse,
   ConfirmSourceResponse,
-  NavTreeNode,
-  QueueSubmitRequest,
-  QueueSubmitResponse,
   QueueItem,
   JobSummary,
   JobStatus,
+  JobPage,
+  ReingestRequest,
+  ReingestResponse,
   GlobalSearchResponse,
   KbSyncResponse,
 } from "@/types/api";
@@ -34,19 +35,21 @@ export interface ListSourcesParams {
   parent_only?: boolean;
   status?: string;
   search?: string;
+  origin?: "manual" | "discovered";
+  include_counts?: boolean;
 }
 
 export const listSources = (params: ListSourcesParams = {}) =>
   apiClient
-    .get<Paginated<SourceSummary>>("/sources", { params })
+    .get<SourceListResponse>("/sources", { params })
     .then((r) => r.data);
 
 export const getSource = (id: string) =>
   apiClient.get<SourceDetail>(`/sources/${id}`).then((r) => r.data);
 
-export const getActiveJobs = () =>
+export const listPendingReviewSources = () =>
   apiClient
-    .get<{ active_jobs: Record<string, string> }>("/sources/active-jobs")
+    .get<Paginated<SourceSummary>>("/sources/pending-review")
     .then((r) => r.data);
 
 // ----- Jobs -----
@@ -83,6 +86,19 @@ export const confirmSource = (
 
 export const deleteSource = (id: string) =>
   apiClient.delete(`/sources/${id}`).then((r) => r.data);
+
+export const reingestSource = (id: string, body: ReingestRequest = {}) =>
+  apiClient
+    .post<ReingestResponse>(`/sources/${id}/reingest`, body)
+    .then((r) => r.data);
+
+export const getJobPages = (
+  jobId: string,
+  params: { page?: number; size?: number; outcome?: string } = {},
+) =>
+  apiClient
+    .get<Paginated<JobPage>>(`/jobs/${jobId}/pages`, { params })
+    .then((r) => r.data);
 
 // ----- Files -----
 export interface ListFilesParams {
@@ -136,16 +152,7 @@ export const getActivity = (limit = 20, offset = 0) =>
 export const startIngest = (body: IngestRequest) =>
   apiClient.post<IngestResponse>("/ingest", body).then((r) => r.data);
 
-// ----- Nav tree -----
-export const getNavTree = (url: string, force_refresh = false) =>
-  apiClient
-    .get<NavTreeNode[]>("/nav/tree", { params: { url, force_refresh } })
-    .then((r) => r.data);
-
-// ----- Queue -----
-export const submitToQueue = (body: QueueSubmitRequest) =>
-  apiClient.post<QueueSubmitResponse>("/queue", body).then((r) => r.data);
-
+// ----- Queue (read-only; submission flows through /ingest or reingest) -----
 export const getQueueItems = (params?: { page?: number; size?: number }) =>
   apiClient.get<Paginated<QueueItem>>("/queue", { params }).then((r) => r.data);
 

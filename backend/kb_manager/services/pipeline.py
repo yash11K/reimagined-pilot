@@ -37,6 +37,7 @@ from kb_manager.models import KBFile, Source
 from kb_manager.queries import files as file_queries
 from kb_manager.queries import jobs as job_queries
 from kb_manager.queries import queue as queue_queries
+from kb_manager.queries import run_pages as run_page_queries
 from kb_manager.queries import sources as source_queries
 
 if TYPE_CHECKING:
@@ -58,12 +59,32 @@ from kb_manager.services.versioning import VersioningService
 
 logger = logging.getLogger(__name__)
 
-_EN_PATH_MARKER = "/en/"
+_SUPPORTED_LANGUAGES: set[str] | None = None
 
 
-def _is_english_url(url: str) -> bool:
-    """Return True only if URL contains /en/ path segment."""
-    return _EN_PATH_MARKER in url
+def _get_supported_languages() -> set[str]:
+    """Lazy-load supported languages from settings."""
+    global _SUPPORTED_LANGUAGES
+    if _SUPPORTED_LANGUAGES is None:
+        _SUPPORTED_LANGUAGES = get_settings().SUPPORTED_LANGUAGES
+    return _SUPPORTED_LANGUAGES
+
+
+def _extract_language(url: str) -> str | None:
+    """Extract language code from URL path segments.
+
+    Looks for a supported language code (e.g. 'en', 'fr') as a path segment.
+    Returns the language code if found, None otherwise.
+    """
+    supported = _get_supported_languages()
+    # Parse path segments from the URL
+    from urllib.parse import urlparse
+    path = urlparse(url).path if "://" in url else url
+    segments = [s.lower() for s in path.split("/") if s]
+    for segment in segments:
+        if segment in supported:
+            return segment
+    return None
 
 
 class Pipeline:
@@ -122,9 +143,14 @@ class Pipeline:
                 {"job_id": job_id_str, "source_url": source_url},
             )
 
-            # Update progress: scout started
+            # Update progress: scout started + display_status
             async with self._session_factory() as db:
                 await job_queries.update_job(db, job_id, progress_pct=10)
+                job = await job_queries.get_job(db, job_id)
+                if job is not None:
+                    await source_queries.set_display_status(
+                        db, job.source_id, "discovering",
+                    )
                 await db.commit()
 
             # 1. Fetch model.json
@@ -169,7 +195,9 @@ class Pipeline:
                 job = await job_queries.get_job(db, job_id)
                 if job is None:
                     raise ValueError(f"Job {job_id} not found")
-                parent_source = job.source
+                parent_source = await source_queries.get_source(db, job.source_id)
+                if parent_source is None:
+                    raise ValueError(f"Source {job.source_id} not found")
                 # Snapshot plain data so we can close this session quickly
                 parent_source_id = parent_source.id
                 parent_region = parent_source.region
@@ -235,17 +263,17 @@ class Pipeline:
                                  job_id_str[:8], resolved_url[:60])
                     continue
 
-                # --- Filter + collect denied sources ---
+                # --- Filter + collect denied sources (single 'denied' status; reason in metadata) ---
                 if is_cross_domain(resolved_url, source_url):
                     denied_sources.append({
-                        "url": resolved_url, "status": "denied_cross_domain",
+                        "url": resolved_url, "denied_reason": "cross_domain",
                         "reason": "Cross-domain link", "anchor": cl.anchor_text,
                     })
                     denied_count += 1
                     continue
                 if is_denied_url(resolved_url):
                     denied_sources.append({
-                        "url": resolved_url, "status": "denied_path",
+                        "url": resolved_url, "denied_reason": "denied_path",
                         "reason": "Denied URL path segment", "anchor": cl.anchor_text,
                     })
                     denied_count += 1
@@ -255,15 +283,15 @@ class Pipeline:
                     continue
                 if is_ignored_url(resolved_url):
                     denied_sources.append({
-                        "url": resolved_url, "status": "denied_ignored",
+                        "url": resolved_url, "denied_reason": "ignored",
                         "reason": "Ignored URL (homepage/index)", "anchor": cl.anchor_text,
                     })
                     nav_count += 1
                     continue
-                if not _is_english_url(resolved_url):
+                if not _extract_language(resolved_url):
                     denied_sources.append({
-                        "url": resolved_url, "status": "denied_non_english",
-                        "reason": "Non-English URL (no /en/ path)", "anchor": cl.anchor_text,
+                        "url": resolved_url, "denied_reason": "unsupported_language",
+                        "reason": "No supported language path segment found", "anchor": cl.anchor_text,
                     })
                     non_en_count += 1
                     continue
@@ -272,7 +300,7 @@ class Pipeline:
 
                 if classification == "navigation":
                     denied_sources.append({
-                        "url": resolved_url, "status": "denied_navigation",
+                        "url": resolved_url, "denied_reason": "navigation",
                         "reason": cl.reason or "Classified as navigation by Discovery Agent",
                         "anchor": cl.anchor_text,
                     })
@@ -283,18 +311,20 @@ class Pipeline:
                     certain_links.append({
                         "url": resolved_url, "anchor_text": cl.anchor_text,
                         "reason": cl.reason,
+                        "language": _extract_language(resolved_url),
                     })
                     certain_count += 1
                 else:
                     uncertain_links.append({
                         "url": resolved_url, "anchor_text": cl.anchor_text,
                         "reason": cl.reason,
+                        "language": _extract_language(resolved_url),
                     })
                     uncertain_count += 1
 
             # --- Session 2: Batch-write all classified links + finalise job ---
             async with self._session_factory() as db:
-                # Write denied sources
+                # Write denied sources — single 'denied' status; reason kept in metadata
                 for ds in denied_sources:
                     existing = await source_queries.get_source_by_url(db, ds["url"])
                     if existing is None:
@@ -305,8 +335,11 @@ class Pipeline:
                             region=parent_region,
                             brand=parent_brand,
                             kb_target=parent_kb_target,
-                            status=ds["status"],
+                            status="denied",
+                            origin="discovered",
+                            parent_source_id=parent_source_id,
                             metadata_={
+                                "denied_reason": ds["denied_reason"],
                                 "reason": ds["reason"],
                                 "discovered_on": source_url,
                                 "anchor_text": ds["anchor"],
@@ -322,13 +355,25 @@ class Pipeline:
                         region=parent_region,
                         brand=parent_brand,
                         kb_target=parent_kb_target,
+                        language=cl_data["language"],
+                        origin="discovered",
+                        parent_source_id=parent_source_id,
+                    )
+                    # Pre-create the job for the discovered source so SSE has
+                    # a job_id immediately, then enqueue against that source.
+                    discovered_job = await job_queries.create_job(
+                        db, source_id=discovered_source.id, status="scouting",
+                    )
+                    await source_queries.set_active_job(
+                        db, discovered_source.id, discovered_job.id,
+                    )
+                    await source_queries.set_display_status(
+                        db, discovered_source.id, "queued",
                     )
                     await queue_queries.add_to_queue(
                         db,
-                        url=cl_data["url"],
-                        region=parent_region,
-                        brand=parent_brand,
-                        kb_target=parent_kb_target,
+                        source_id=discovered_source.id,
+                        job_id=discovered_job.id,
                     )
                     logger.info("✅ [job=%s] Certain link queued: %s",
                                 job_id_str[:8], cl_data["url"][:60])
@@ -357,9 +402,14 @@ class Pipeline:
                         region=parent_region,
                         brand=parent_brand,
                         kb_target=parent_kb_target,
+                        language=cl_data["language"],
+                        origin="discovered",
+                        parent_source_id=parent_source_id,
                     )
                     await source_queries.update_source(
-                        db, discovered_source.id, status="needs_confirmation",
+                        db, discovered_source.id,
+                        status="needs_confirmation",
+                        display_status="needs_review",
                     )
                     logger.info("❓ [job=%s] Uncertain link: %s",
                                 job_id_str[:8], cl_data["url"][:60])
@@ -385,7 +435,7 @@ class Pipeline:
                     "uncertain": uncertain_count,
                     "denied": denied_count,
                     "nav_skipped": nav_count,
-                    "non_en_skipped": non_en_count,
+                    "unsupported_lang_skipped": non_en_count,
                     "already_seen": already_seen_count,
                     "junk_dropped": junk_count,
                 }
@@ -396,6 +446,9 @@ class Pipeline:
 
                 await source_queries.mark_scouted(db, parent_source_id, scout_summary)
                 await job_queries.update_job(db, job_id, status="processing", progress_pct=40)
+                await source_queries.set_display_status(
+                    db, parent_source_id, "extracting",
+                )
                 await db.commit()
             # Session 2 closed.
 
@@ -438,7 +491,9 @@ class Pipeline:
                 if job is None:
                     raise ValueError(f"Job {job_id} not found")
 
-                source = job.source
+                source = await source_queries.get_source(db, job.source_id)
+                if source is None:
+                    raise ValueError(f"Source {job.source_id} not found")
                 steering = job.steering_prompt
 
                 await self._stream.publish(
@@ -467,6 +522,9 @@ class Pipeline:
                 skip_source = False
                 page_components: list[dict] = []
 
+                # Track whether versioning superseded an existing file
+                had_existing_file = False
+
                 if source.url:
                     try:
                         async with httpx.AsyncClient(timeout=self._settings.AEM_REQUEST_TIMEOUT) as client:
@@ -475,10 +533,31 @@ class Pipeline:
                             source_json = source_resp.json()
                         modify_date = self._extract_modify_date(source_json)
 
+                        # Check if there's an existing file before versioning decision
+                        existing_file_stmt = (
+                            select(KBFile)
+                            .where(KBFile.source_url == source.url)
+                            .where(KBFile.status != "superseded")
+                            .limit(1)
+                        )
+                        existing_result = await db.execute(existing_file_stmt)
+                        had_existing_file = existing_result.scalars().first() is not None
+
                         v_decision = await self._check_versioning_and_cleanup(source.url, modify_date, db)
                         if v_decision == "skip":
                             logger.info("⏭️ [job=%s] Source unchanged — skip", job_id_str[:8])
                             skip_source = True
+                            # Record RunPage: skipped
+                            try:
+                                await run_page_queries.create_run_page(
+                                    db,
+                                    job_id=job.id,
+                                    url=source.url,
+                                    outcome="skipped",
+                                    reason="unchanged",
+                                )
+                            except Exception:
+                                logger.warning("Failed to record RunPage for %s", source.url, exc_info=True)
                         else:
                             page_components.append({"raw_json": prune_aem_json(source_json)})
                     except Exception as exc:
@@ -494,7 +573,7 @@ class Pipeline:
                         if not ef.source_url:
                             ef.source_url = source.url.replace(".model.json", "")
                         result = await self._process_single_file(
-                            db, job, [source.id], ef,
+                            db, job, source, [source.id], ef,
                             qa_agent, uniqueness_agent, job_id_str,
                             modify_date=modify_date,
                         )
@@ -506,9 +585,38 @@ class Pipeline:
                         else:
                             files_rejected += 1
 
+                        # Record RunPage: replaced or created
+                        try:
+                            # Get the file_id from the most recently created file for this source
+                            latest_file_stmt = (
+                                select(KBFile)
+                                .where(KBFile.source_url == ef.source_url)
+                                .where(KBFile.status != "superseded")
+                                .order_by(KBFile.modify_date.desc())
+                                .limit(1)
+                            )
+                            latest_result = await db.execute(latest_file_stmt)
+                            latest_file = latest_result.scalars().first()
+                            file_id = latest_file.id if latest_file else None
+                            content_bytes = len(ef.md_content.encode()) if ef.md_content else None
+
+                            outcome = "replaced" if had_existing_file else "created"
+                            await run_page_queries.create_run_page(
+                                db,
+                                job_id=job.id,
+                                url=source.url,
+                                outcome=outcome,
+                                file_id=file_id,
+                                bytes=content_bytes,
+                            )
+                        except Exception:
+                            logger.warning("Failed to record RunPage for %s", source.url, exc_info=True)
+
                 await source_queries.mark_ingested(db, source.id)
                 await job_queries.update_job_status(db, job_id, "completed")
                 await job_queries.update_job(db, job_id, progress_pct=100)
+                # Trigger handles last_run_at; clear active_job pointer
+                await source_queries.set_active_job(db, source.id, None)
                 await db.commit()
 
             await self._stream.publish(
@@ -582,6 +690,7 @@ class Pipeline:
         self,
         db: AsyncSession,
         job: Any,
+        source: Any,
         source_ids: list[uuid.UUID],
         extracted_file: Any,
         qa_agent: QAAgent,
@@ -595,6 +704,10 @@ class Pipeline:
         """
         file_title = getattr(extracted_file, "title", "unknown")
         primary_source_id = source_ids[0] if source_ids else None
+        s_region = source.region if source is not None else None
+        s_brand = source.brand if source is not None else None
+        s_kb_target = source.kb_target if source is not None else "public"
+        s_language = source.language if source is not None else None
         # Sentinel — set after create_file succeeds so the except branch
         # can reliably mark the row as rejected if anything below fails.
         kb_file = None
@@ -605,9 +718,10 @@ class Pipeline:
                 title=extracted_file.title,
                 md_content=extracted_file.md_content,
                 source_url=extracted_file.source_url,
-                region=extracted_file.region or (job.source.region if job.source else None),
-                brand=extracted_file.brand or (job.source.brand if job.source else None),
-                kb_target=job.source.kb_target if job.source else "public",
+                region=extracted_file.region or s_region,
+                brand=extracted_file.brand or s_brand,
+                kb_target=s_kb_target,
+                language=getattr(extracted_file, "language", None) or s_language,
                 category=getattr(extracted_file, "category", None),
                 visibility=getattr(extracted_file, "visibility", None),
                 tags=getattr(extracted_file, "tags", None) or None,
@@ -615,9 +729,10 @@ class Pipeline:
                 status="pending_review",
             )
 
-            # Link all participating sources to this file
+            # Link all participating sources to this file + update active pointer
             for sid in source_ids:
                 await file_queries.link_source_to_file(db, sid, kb_file.id)
+                await source_queries.set_active_file(db, sid, kb_file.id)
 
             await self._stream.publish(
                 job_id_str, "progress", "file_created",
@@ -628,8 +743,8 @@ class Pipeline:
             qa_metadata = {
                 "title": extracted_file.title,
                 "source_url": extracted_file.source_url,
-                "region": extracted_file.region or (job.source.region if job.source else None),
-                "brand": extracted_file.brand or (job.source.brand if job.source else None),
+                "region": extracted_file.region or s_region,
+                "brand": extracted_file.brand or s_brand,
             }
             qa_result = await run_qa_and_uniqueness(
                 extracted_file.md_content,
@@ -641,8 +756,8 @@ class Pipeline:
             metadata_complete = all([
                 extracted_file.title,
                 extracted_file.source_url,
-                extracted_file.region or (job.source.region if job.source else None),
-                extracted_file.brand or (job.source.brand if job.source else None),
+                extracted_file.region or s_region,
+                extracted_file.brand or s_brand,
             ])
 
             status = route_file(
@@ -703,11 +818,10 @@ class Pipeline:
             return "rejected"
 
     async def _fail_job(self, job_id: uuid.UUID, error_message: str, channel: str) -> None:
-        """Mark a job as failed and roll the parent source back to a retry-able state.
+        """Mark a job as failed and clear the source's active_job pointer.
 
-        Without the source rollback, a crashed job leaves its source stuck at
-        `identified` / `is_scouted=True` but never `ingested`, which blocks
-        future reruns via the dedup path in scout.
+        The parent source is also flipped to status='failed' so the UI shows
+        the failure and reingest is unblocked.
         """
         job_id_str = str(job_id)
         try:

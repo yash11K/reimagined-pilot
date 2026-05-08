@@ -429,7 +429,8 @@ def extract_links_deterministic(pruned_json: dict, source_url: str) -> list[dict
     """Extract all content links from pruned AEM JSON deterministically.
 
     Walks the full tree, collects every link field, then filters out
-    denied / self / ignored / non-English URLs and deduplicates.
+    denied / self / ignored URLs and deduplicates. Language filtering is
+    handled downstream in the pipeline scout phase.
 
     Returns list of dicts: {url, anchor_text, context} with resolved URLs.
     """

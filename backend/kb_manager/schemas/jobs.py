@@ -20,3 +20,16 @@ class JobSummary(BaseModel):
     completed_at: datetime | None
     error_message: str | None
     brand: str | None
+
+
+class RunPageResponse(BaseModel):
+    """Single run page outcome record."""
+
+    id: UUID
+    job_id: UUID
+    url: str
+    outcome: str
+    reason: str | None
+    bytes: int | None
+    file_id: UUID | None
+    created_at: datetime | None

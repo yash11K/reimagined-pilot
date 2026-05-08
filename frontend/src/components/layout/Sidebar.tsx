@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Search,
-  Compass,
+  Database,
   Library,
   ShieldCheck,
   PenSquare,
@@ -38,7 +38,7 @@ const NAV: NavItem[] = [
       { to: "/search-operations/playground", label: "KB Playground", icon: Sparkles },
     ],
   },
-  { to: "/discovery-tools", label: "Discovery Tools", icon: Compass },
+  { to: "/knowledge-base", label: "Knowledge Base", icon: Database },
   { to: "/knowledge-library", label: "Knowledge Library", icon: Library },
   { to: "/review-governance", label: "Review & Governance", icon: ShieldCheck },
   { to: "/authoring-mode", label: "Authoring Mode", icon: PenSquare },
