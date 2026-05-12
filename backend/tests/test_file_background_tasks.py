@@ -22,7 +22,7 @@ class TestUploadToS3:
     async def test_upload_success_updates_s3_key(self):
         """On successful upload, s3_key is written back to the file."""
         file_id = uuid.uuid4()
-        mock_file = MagicMock(id=file_id)
+        mock_file = MagicMock(id=file_id, folder_id=None)
         mock_s3 = MagicMock()
         mock_s3.upload = AsyncMock(return_value="public/brand/region/ns/file.md")
 
@@ -38,7 +38,9 @@ class TestUploadToS3:
 
             await _upload_to_s3(file_id, mock_s3, mock_session_factory)
 
-            mock_s3.upload.assert_called_once_with(mock_file)
+            mock_s3.upload.assert_called_once_with(
+                mock_file, namespace=None, folder_path=None,
+            )
             mock_fq.update_file.assert_called_once_with(
                 mock_db, file_id, s3_key="public/brand/region/ns/file.md"
             )
@@ -48,7 +50,7 @@ class TestUploadToS3:
     async def test_upload_failure_does_not_update(self):
         """When S3 upload returns None, no s3_key update is made."""
         file_id = uuid.uuid4()
-        mock_file = MagicMock(id=file_id)
+        mock_file = MagicMock(id=file_id, folder_id=None)
         mock_s3 = MagicMock()
         mock_s3.upload = AsyncMock(return_value=None)
 
@@ -64,7 +66,9 @@ class TestUploadToS3:
 
             await _upload_to_s3(file_id, mock_s3, mock_session_factory)
 
-            mock_s3.upload.assert_called_once_with(mock_file)
+            mock_s3.upload.assert_called_once_with(
+                mock_file, namespace=None, folder_path=None,
+            )
             mock_fq.update_file.assert_not_called()
             mock_db.commit.assert_not_called()
 

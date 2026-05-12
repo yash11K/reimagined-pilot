@@ -173,6 +173,59 @@ class IngestionJob(Base):
 
 
 # ---------------------------------------------------------------------------
+# Folder — user-organized hierarchy for KB files (SharePoint-style navigation)
+# ---------------------------------------------------------------------------
+
+class Folder(Base):
+    __tablename__ = "folders"
+    __table_args__ = (
+        # Case-insensitive uniqueness per parent — enforced via expression index
+        # in migration (UniqueConstraint here is informational only).
+        UniqueConstraint(
+            "parent_folder_id", "name",
+            name="uq_folders_parent_name",
+        ),
+        Index("ix_folders_parent", "parent_folder_id"),
+        Index("ix_folders_kb_target", "kb_target"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=func.gen_random_uuid(),
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    parent_folder_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("folders.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    # Set at root, inherited by subfolders. App enforces immutability per tree.
+    kb_target: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Optional folder-level metadata defaults applied as a prior to LLM tagging
+    default_brand: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_region: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_language: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(),
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    parent: Mapped["Folder | None"] = relationship(
+        remote_side="Folder.id", lazy="raise",
+    )
+    kb_files: Mapped[list["KBFile"]] = relationship(
+        back_populates="folder", lazy="raise",
+    )
+
+
+# ---------------------------------------------------------------------------
 # KBFile — extracted knowledge base article
 # ---------------------------------------------------------------------------
 
@@ -182,6 +235,7 @@ class KBFile(Base):
         Index("ix_kb_files_status", "status"),
         Index("ix_kb_files_job_id", "job_id"),
         Index("ix_kb_files_kb_target", "kb_target"),
+        Index("ix_kb_files_folder_id", "folder_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -225,6 +279,15 @@ class KBFile(Base):
     reviewed_by: Mapped[str | None] = mapped_column(Text, nullable=True)
     review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Null = legacy URL-ingested or unfiled. Set when uploaded via file manager
+    # or moved into a folder. ON DELETE SET NULL so a folder cascade-restrict
+    # failure path doesn't orphan files.
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("folders.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(),
     )
@@ -232,6 +295,9 @@ class KBFile(Base):
     job: Mapped["IngestionJob"] = relationship(back_populates="kb_files", lazy="raise")
     sources: Mapped[list["Source"]] = relationship(
         secondary=source_kb_files, back_populates="kb_files", lazy="raise",
+    )
+    folder: Mapped["Folder | None"] = relationship(
+        back_populates="kb_files", lazy="raise",
     )
 
 

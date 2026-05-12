@@ -66,11 +66,19 @@ async def list_files(
     language: str | None = None,
     job_id: uuid.UUID | None = None,
     source_id: uuid.UUID | None = None,
+    folder_id: uuid.UUID | None = None,
+    unfiled: bool = False,
     search: str | None = None,
 ) -> dict:
     """List KB files with pagination, filtering, and title search.
 
     When source_id is given, filters via the junction table.
+
+    Folder filtering:
+      - ``folder_id`` (UUID): files inside that folder.
+      - ``unfiled=True``: files with no folder (legacy URL-ingested files —
+        the "Web Sources" virtual bucket). Mutually exclusive with
+        ``folder_id``; if both are passed, ``folder_id`` wins.
     """
     query = select(KBFile)
     count_query = select(func.count()).select_from(KBFile)
@@ -93,6 +101,12 @@ async def list_files(
     if job_id is not None:
         query = query.where(KBFile.job_id == job_id)
         count_query = count_query.where(KBFile.job_id == job_id)
+    if folder_id is not None:
+        query = query.where(KBFile.folder_id == folder_id)
+        count_query = count_query.where(KBFile.folder_id == folder_id)
+    elif unfiled:
+        query = query.where(KBFile.folder_id.is_(None))
+        count_query = count_query.where(KBFile.folder_id.is_(None))
     if source_id is not None:
         # Join through junction table
         query = query.join(source_kb_files, source_kb_files.c.kb_file_id == KBFile.id).where(

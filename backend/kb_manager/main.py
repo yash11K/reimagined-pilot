@@ -18,6 +18,7 @@ from kb_manager.logging_config import (
 )
 from kb_manager.routes.ingest import router as ingest_router
 from kb_manager.routes.files import router as files_router
+from kb_manager.routes.folders import router as folders_router
 from kb_manager.routes.sources import router as sources_router
 from kb_manager.routes.jobs import router as jobs_router
 from kb_manager.routes.kb import router as kb_router
@@ -158,6 +159,7 @@ def create_app() -> FastAPI:
     # Mount route modules under /api/v1
     app.include_router(ingest_router, prefix="/api/v1")
     app.include_router(files_router, prefix="/api/v1")
+    app.include_router(folders_router, prefix="/api/v1")
     app.include_router(sources_router, prefix="/api/v1")
     app.include_router(jobs_router, prefix="/api/v1")
     app.include_router(kb_router, prefix="/api/v1")

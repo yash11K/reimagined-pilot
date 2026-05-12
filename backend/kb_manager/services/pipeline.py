@@ -30,11 +30,13 @@ from kb_manager.agents import (
     QAAgent,
     UniquenessAgent,
 )
+from kb_manager.agents.metadata_enricher import MetadataEnricher
 from kb_manager.agents.qa import run_qa_and_uniqueness
 from kb_manager.config import get_settings
 from kb_manager.logging_config import bind_log_context
 from kb_manager.models import KBFile, Source
 from kb_manager.queries import files as file_queries
+from kb_manager.queries import folders as folder_queries
 from kb_manager.queries import jobs as job_queries
 from kb_manager.queries import queue as queue_queries
 from kb_manager.queries import run_pages as run_page_queries
@@ -55,6 +57,7 @@ from kb_manager.services.aem_pruner import (
 from kb_manager.services.routing_matrix import route_file
 from kb_manager.services.s3_uploader import S3Uploader
 from kb_manager.services.stream_manager import StreamManager
+from kb_manager.services.upload_context import resolve_upload_context
 from kb_manager.services.versioning import VersioningService
 
 logger = logging.getLogger(__name__)
@@ -816,6 +819,154 @@ class Pipeline:
                 job_id_str, "progress", "error", {"message": f"File error: {exc}"},
             )
             return "rejected"
+
+    # ------------------------------------------------------------------
+    # Upload path — markdown file uploaded via /files/upload
+    # ------------------------------------------------------------------
+
+    async def process_upload(
+        self,
+        file_id: uuid.UUID,
+        *,
+        folder_defaults: dict[str, str] | None = None,
+    ) -> None:
+        """Enrich metadata + run QA + Uniqueness on an uploaded markdown file.
+
+        Called as a background task after ``POST /files/upload`` creates the
+        KBFile row. Mirrors the post-creation half of ``_process_single_file``,
+        but invokes ``MetadataEnricher`` first (the URL flow gets metadata from
+        the Extractor; uploads have to derive their own).
+
+        On routing to ``approved`` the S3 upload + Bedrock sync are kicked off
+        automatically, matching the URL-ingestion behaviour. Approval still
+        runs through the same gates — an upload only auto-approves when QA
+        accepts, uniqueness is unique/overlapping, and metadata is complete.
+        """
+        file_id_str = str(file_id)
+        bind_log_context(file_id=file_id_str[:8], phase="upload")
+        t0 = time.perf_counter()
+        logger.info("📥 [file=%s] Upload pipeline STARTED", file_id_str[:8])
+
+        try:
+            async with self._session_factory() as db:
+                kb_file = await file_queries.get_file(db, file_id)
+                if kb_file is None:
+                    logger.warning("⚠️ Upload pipeline: file %s not found", file_id_str)
+                    return
+
+                # 1. Enrich metadata via Haiku (folder defaults override LLM)
+                enricher = MetadataEnricher()
+                enriched = await enricher.run(
+                    kb_file.md_content,
+                    display_name=kb_file.title,
+                    folder_defaults=folder_defaults,
+                )
+
+                effective_region = (
+                    (folder_defaults or {}).get("region") or kb_file.region
+                )
+                effective_language = (
+                    (folder_defaults or {}).get("language") or kb_file.language
+                )
+
+                await file_queries.update_file(
+                    db, file_id,
+                    title=enriched.title or kb_file.title,
+                    brand=enriched.brand,
+                    category=enriched.category,
+                    visibility=enriched.visibility,
+                    tags=enriched.tags or None,
+                    region=effective_region,
+                    language=effective_language,
+                )
+                await db.commit()
+
+                # 2. QA + Uniqueness — concurrent
+                qa_metadata = {
+                    "title": enriched.title,
+                    "source_url": kb_file.source_url,
+                    "region": effective_region,
+                    "brand": enriched.brand,
+                }
+                qa_result = await run_qa_and_uniqueness(
+                    kb_file.md_content, metadata=qa_metadata,
+                )
+
+                metadata_complete = all([
+                    enriched.title,
+                    kb_file.source_url,
+                    effective_region,
+                    enriched.brand and enriched.brand != "unknown",
+                ])
+                status = route_file(
+                    qa_result.quality_verdict,
+                    qa_result.uniqueness_verdict,
+                    metadata_complete,
+                )
+
+                await file_queries.update_file(
+                    db, file_id,
+                    quality_verdict=qa_result.quality_verdict,
+                    quality_reasoning=qa_result.quality_reasoning,
+                    uniqueness_verdict=qa_result.uniqueness_verdict,
+                    uniqueness_reasoning=qa_result.uniqueness_reasoning,
+                    similar_file_ids=[
+                        uuid.UUID(sid) for sid in qa_result.similar_file_ids if sid
+                    ] or None,
+                    status=status,
+                )
+                await db.commit()
+
+                # 3. Auto-S3-upload + KB sync if routing said approved.
+                if status == "approved":
+                    refreshed = await file_queries.get_file(db, file_id)
+                    if refreshed is not None:
+                        namespace, folder_path = await resolve_upload_context(
+                            db, refreshed,
+                        )
+                        s3_key = await self._s3.upload(
+                            refreshed,
+                            namespace=namespace,
+                            folder_path=folder_path,
+                        )
+                        if s3_key:
+                            await file_queries.update_file(
+                                db, refreshed.id, s3_key=s3_key,
+                            )
+                            await db.commit()
+
+            if status == "approved":
+                await self._trigger_kb_sync(
+                    context=f"upload file={file_id_str[:8]}",
+                )
+
+            elapsed = (time.perf_counter() - t0) * 1000
+            logger.info(
+                "✅ [file=%s] Upload pipeline DONE in %.1fms — status=%s",
+                file_id_str[:8], elapsed, status,
+            )
+
+        except Exception as exc:
+            elapsed = (time.perf_counter() - t0) * 1000
+            logger.exception(
+                "💥 [file=%s] Upload pipeline FAILED after %.1fms: %s",
+                file_id_str[:8], elapsed, exc,
+            )
+            # Best-effort: mark file rejected so it doesn't dangle in
+            # pending_review forever after a transient enrichment failure.
+            try:
+                async with self._session_factory() as db:
+                    await file_queries.update_file(
+                        db, file_id,
+                        status="rejected",
+                        quality_reasoning=f"Upload processing error: {exc}",
+                    )
+                    await db.commit()
+            except Exception:
+                logger.exception(
+                    "💥 [file=%s] Failed to mark file rejected after error",
+                    file_id_str[:8],
+                )
 
     async def _fail_job(self, job_id: uuid.UUID, error_message: str, channel: str) -> None:
         """Mark a job as failed and clear the source's active_job pointer.
