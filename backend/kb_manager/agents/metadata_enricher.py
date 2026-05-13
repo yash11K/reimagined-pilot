@@ -147,6 +147,7 @@ class MetadataEnricher:
         *,
         tags_hint: str | None = None,
         display_name: str | None = None,
+        folder_defaults: dict[str, str] | None = None,
     ) -> EnrichedMetadata:
         """Enrich a single piece of content.
 
@@ -154,9 +155,14 @@ class MetadataEnricher:
             content: Raw FAQ / article text.
             tags_hint: Original tags string from the source (e.g. 'avis, deeplink').
             display_name: Optional display name / title hint from the source.
+            folder_defaults: Per-field overrides supplied by the containing
+                folder (e.g. ``{"brand": "avis"}``). Any matching field on the
+                returned ``EnrichedMetadata`` is replaced with the folder value
+                — folder-level metadata wins over LLM inference.
 
         Returns:
-            EnrichedMetadata with LLM-derived fields.
+            EnrichedMetadata with LLM-derived fields, post-applied folder
+            overrides.
         """
         parts = ["Extract metadata from this content."]
         if display_name:
@@ -172,26 +178,34 @@ class MetadataEnricher:
             result = await agent.invoke_async(prompt)
         except Exception as exc:
             logger.warning("⚠️ MetadataEnricher invoke failed: %s", exc)
-            return self._fallback(display_name)
+            return self._apply_folder_defaults(
+                self._fallback(display_name), folder_defaults,
+            )
 
         # Strands structured_output (works on newer SDK versions)
         output = getattr(result, "structured_output", None)
         if output is not None:
             logger.debug("🏷️  Structured output parsed via Strands tool")
-            return self._to_dataclass(output)
+            return self._apply_folder_defaults(
+                self._to_dataclass(output), folder_defaults,
+            )
 
         # Parse JSON from the raw text response
         raw_text = str(result).strip() if result else ""
         output = self._parse_json_response(raw_text)
         if output is not None:
             logger.debug("🏷️  Parsed metadata from JSON text response")
-            return self._to_dataclass(output)
+            return self._apply_folder_defaults(
+                self._to_dataclass(output), folder_defaults,
+            )
 
         logger.warning(
             "⚠️ MetadataEnricher could not extract metadata — using fallbacks. "
             "Preview=%.200s", raw_text,
         )
-        return self._fallback(display_name)
+        return self._apply_folder_defaults(
+            self._fallback(display_name), folder_defaults,
+        )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -205,6 +219,23 @@ class MetadataEnricher:
             brand="unknown",
             category="general",
         )
+
+    @staticmethod
+    def _apply_folder_defaults(
+        meta: EnrichedMetadata,
+        folder_defaults: dict[str, str] | None,
+    ) -> EnrichedMetadata:
+        """Override matching fields on ``meta`` with values from ``folder_defaults``.
+
+        Folder-level metadata is treated as authoritative — any field present
+        in the dict replaces the LLM-inferred value. Unknown keys are ignored.
+        """
+        if not folder_defaults:
+            return meta
+        for key, value in folder_defaults.items():
+            if value and hasattr(meta, key):
+                setattr(meta, key, value)
+        return meta
 
     @staticmethod
     def _to_dataclass(output: EnrichedMetadataOutput) -> EnrichedMetadata:

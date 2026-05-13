@@ -113,8 +113,17 @@ class S3Uploader:
         return f"{s3_key}.metadata.json"
 
     @staticmethod
-    def _build_metadata_document(file: KBFile) -> dict:
-        """Build a Bedrock Knowledge Base metadata document from a KBFile."""
+    def _build_metadata_document(
+        file: KBFile,
+        *,
+        folder_path: str | None = None,
+    ) -> dict:
+        """Build a Bedrock Knowledge Base metadata document from a KBFile.
+
+        ``folder_path`` is the resolved slash-joined folder chain (e.g.
+        ``"Marketing/Brand/Region"``). When provided it lands as a STRING
+        attribute on the sidecar so KB queries can filter by folder.
+        """
         attrs: dict[str, dict] = {}
 
         def _add(name: str, value: str | None, type_: str = "STRING") -> None:
@@ -137,6 +146,7 @@ class S3Uploader:
         _add("reviewed_by", file.reviewed_by)
         _add("review_notes", file.review_notes)
         _add("s3_key", file.s3_key)
+        _add("folder_path", folder_path)
 
         # Tags as STRING_LIST for Bedrock native filtering
         tags = getattr(file, "tags", None)
@@ -158,10 +168,16 @@ class S3Uploader:
 
         return {"metadataAttributes": attrs}
 
-    async def _upload_metadata(self, s3_key: str, file: KBFile) -> bool:
+    async def _upload_metadata(
+        self,
+        s3_key: str,
+        file: KBFile,
+        *,
+        folder_path: str | None = None,
+    ) -> bool:
         """Upload the metadata sidecar JSON for a content file."""
         meta_key = self._build_metadata_key(s3_key)
-        meta_doc = self._build_metadata_document(file)
+        meta_doc = self._build_metadata_document(file, folder_path=folder_path)
         body = json.dumps(meta_doc, ensure_ascii=False)
 
         logger.info("📋 Uploading metadata sidecar → s3://%s/%s", self._bucket, meta_key)
@@ -175,23 +191,38 @@ class S3Uploader:
         logger.info("📋 Metadata sidecar uploaded: %s (%d bytes)", meta_key, len(body))
         return True
 
-    async def upload(self, file: KBFile) -> str | None:
+    async def upload(
+        self,
+        file: KBFile,
+        *,
+        namespace: str | None = None,
+        folder_path: str | None = None,
+    ) -> str | None:
         """Upload a KBFile's markdown content and metadata sidecar to S3.
 
         Args:
             file: The KBFile ORM instance to upload.
+            namespace: Explicit S3 key namespace segment. When omitted we
+                fall back to the last meaningful path segment of
+                ``file.source_url`` (preserves URL-ingestion behaviour).
+                Pass this for uploads where ``source_url`` is a synthetic
+                ``upload://...`` URI that would otherwise produce a noisy
+                segment.
+            folder_path: Slash-joined folder chain for the file. Lands as a
+                STRING attribute on the metadata sidecar so Bedrock queries
+                can filter by folder.
 
         Returns:
             The s3_key on success, or None on failure.
         """
         try:
-            # Derive namespace from source_url or fall back to "general"
-            namespace = "general"
-            if file.source_url:
-                # Use the last meaningful path segment as namespace
-                path = file.source_url.rstrip("/").rsplit("/", 1)[-1]
-                if path:
-                    namespace = path
+            if namespace is None:
+                namespace = "general"
+                if file.source_url:
+                    # Use the last meaningful path segment as namespace
+                    path = file.source_url.rstrip("/").rsplit("/", 1)[-1]
+                    if path:
+                        namespace = path
 
             # Build a safe filename from the title
             safe_title = re.sub(r"[^\w\-]", "-", file.title.lower()).strip("-")
@@ -218,7 +249,7 @@ class S3Uploader:
             logger.info("☁️ Upload successful: %s (%d bytes)", s3_key, len(body_bytes))
 
             # Upload metadata sidecar for Bedrock KB filtering
-            await self._upload_metadata(s3_key, file)
+            await self._upload_metadata(s3_key, file, folder_path=folder_path)
 
             return s3_key
         except ClientError as e:
@@ -233,6 +264,66 @@ class S3Uploader:
         except Exception:
             logger.exception("❌ Failed to upload file %s to S3", file.id)
             return None
+
+    async def resync_metadata(
+        self,
+        file: KBFile,
+        *,
+        folder_path: str | None = None,
+    ) -> bool:
+        """Re-upload only the metadata sidecar for an already-uploaded file.
+
+        Used by cosmetic metadata edits (category, visibility, tags, folder
+        move) that change the sidecar but not the S3 key path. Cheap — one
+        ``put_object`` call. Returns False if the file has no ``s3_key``
+        (i.e. it was never uploaded).
+        """
+        if not file.s3_key:
+            return False
+        return await self._upload_metadata(
+            file.s3_key, file, folder_path=folder_path,
+        )
+
+    async def recompute_s3_location(
+        self,
+        file: KBFile,
+        old_key: str | None,
+        *,
+        namespace: str | None = None,
+        folder_path: str | None = None,
+    ) -> str | None:
+        """Re-upload the file under a fresh S3 key after a key-segment change.
+
+        Used when a metadata edit changes any field that participates in the
+        S3 key path (kb_target / brand / region / language) or when the
+        filename derived from the title changes. The old key + sidecar are
+        deleted only after the new upload succeeds so a mid-flight failure
+        cannot leave the row pointing at a missing object.
+
+        Cosmetic metadata edits (category, tags, visibility, etc.) do NOT
+        need this — caller should re-upload the sidecar only, much cheaper.
+
+        Args:
+            file: The KBFile ORM instance with its NEW metadata already
+                applied (this method computes the new key off the row).
+            old_key: The previous S3 key, or None if the file was never
+                uploaded yet (treated as a fresh upload).
+            namespace: Optional explicit namespace override; see ``upload``.
+            folder_path: Optional folder path for sidecar; see ``upload``.
+
+        Returns:
+            The new s3_key on success, or None on failure.
+        """
+        new_key = await self.upload(
+            file, namespace=namespace, folder_path=folder_path,
+        )
+        if new_key is None:
+            # Upload failed — keep the old key in place so the row still
+            # points at a real object.
+            return None
+        if old_key and old_key != new_key:
+            await self.delete(old_key)
+        return new_key
 
     async def delete(self, s3_key: str) -> bool:
         """Delete a file and its metadata sidecar from S3.

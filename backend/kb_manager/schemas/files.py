@@ -73,3 +73,42 @@ class EditRequest(BaseModel):
 
     md_content: str
     reviewed_by: str
+
+
+class FileMetadataEdit(BaseModel):
+    """Partial metadata + folder move for an existing KB file (PATCH /files/{id}).
+
+    Any field set in the request is applied; unset fields are left unchanged.
+    Pass ``folder_id: null`` explicitly to remove the file from its current
+    folder (move to the unfiled / "Web Sources" bucket).
+    """
+
+    folder_id: UUID | None = None
+    title: str | None = None
+    brand: str | None = None
+    region: str | None = None
+    language: str | None = None
+    category: str | None = None
+    visibility: str | None = None
+    tags: list[str] | None = None
+    reviewed_by: str | None = None
+
+
+class CopyRequest(BaseModel):
+    """Request body for POST /files/{file_id}/copy."""
+
+    folder_id: UUID
+
+
+class UploadResponse(BaseModel):
+    """Returned from POST /files/upload immediately after the KBFile row is
+    created. Enrichment + QA + Uniqueness run in the background — clients
+    poll GET /files/{id} for the final status."""
+
+    file_id: UUID
+    source_id: UUID
+    job_id: UUID
+    folder_id: UUID
+    status: str          # initial status, always 'pending_review'
+    title: str
+    deduped: bool        # True when the upload reused an existing Source row
